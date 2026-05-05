@@ -8,9 +8,14 @@ import RotatePrompt from '@/components/RotatePrompt'
 export default function StartPage() {
   const router = useRouter()
   const [highScore, setHighScore] = useState(0)
+  const [scale, setScale] = useState(1)
 
   useEffect(() => {
     setHighScore(loadHighScore())
+    const update = () => setScale(Math.min(1, window.innerHeight / 844))
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
   }, [])
 
   return (
@@ -20,6 +25,8 @@ export default function StartPage() {
         style={{
           width: '390px',
           height: '844px',
+          transform: `scale(${scale})`,
+          transformOrigin: 'top center',
           background: '#000',
           display: 'flex',
           flexDirection: 'column',

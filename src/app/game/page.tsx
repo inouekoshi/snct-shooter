@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import RotatePrompt from '@/components/RotatePrompt'
@@ -16,6 +16,14 @@ interface GameOverData {
 export default function GamePage() {
   const router = useRouter()
   const [gameOver, setGameOver] = useState<GameOverData | null>(null)
+  const [scale, setScale] = useState(1)
+
+  useEffect(() => {
+    const update = () => setScale(Math.min(1, window.innerHeight / 844))
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
 
   const handleGameOver = useCallback((score: number, stage: number, highScore: number) => {
     setGameOver({ score, stage, highScore })
@@ -24,7 +32,7 @@ export default function GamePage() {
   return (
     <>
       <RotatePrompt />
-      <div style={{ position: 'relative', width: '390px', height: '844px' }}>
+      <div style={{ position: 'relative', width: '390px', height: '844px', transform: `scale(${scale})`, transformOrigin: 'top center' }}>
         {!gameOver && <GameCanvas onGameOver={handleGameOver} />}
 
         {gameOver && (

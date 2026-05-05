@@ -16,17 +16,23 @@ export function registerTouchHandlers(
     e.preventDefault()
     const t = e.touches[0]
     const rect = canvas.getBoundingClientRect()
+    const dpr = window.devicePixelRatio || 1
+    const toLogicalX = (canvas.width / dpr) / rect.width
+    const toLogicalY = (canvas.height / dpr) / rect.height
     buffer.active = true
-    buffer.x = t.clientX - rect.left
-    buffer.y = t.clientY - rect.top
+    buffer.x = (t.clientX - rect.left) * toLogicalX
+    buffer.y = (t.clientY - rect.top) * toLogicalY
   }
 
   const onMove = (e: TouchEvent) => {
     e.preventDefault()
     const t = e.touches[0]
     const rect = canvas.getBoundingClientRect()
-    buffer.x = t.clientX - rect.left
-    buffer.y = t.clientY - rect.top
+    const dpr = window.devicePixelRatio || 1
+    const toLogicalX = (canvas.width / dpr) / rect.width
+    const toLogicalY = (canvas.height / dpr) / rect.height
+    buffer.x = (t.clientX - rect.left) * toLogicalX
+    buffer.y = (t.clientY - rect.top) * toLogicalY
   }
 
   const onEnd = (e: TouchEvent) => {
