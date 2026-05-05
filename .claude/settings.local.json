@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npx create-next-app@latest *)",
+      "Bash(node -e ' *)",
+      "Bash(python3 *)",
+      "Bash(npm run *)",
+      "Bash(node *)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s http://localhost:3000/game)",
+      "Bash(git init *)",
+      "Bash(git remote *)",
+      "Bash(git commit *)",
+      "mcp__claude_ai_Vercel__deploy_to_vercel",
+      "Bash(npx vercel *)",
+      "Bash(vercel whoami *)",
+      "Bash(vercel link *)",
+      "Bash(vercel --version)",
+      "Bash(git *)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "Bash(vercel --global-config)",
+      "Bash(vercel api *)",
+      "Bash(vercel *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://casual-games-six.vercel.app/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://casual-games-six.vercel.app/game)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://casual-games-six.vercel.app/manifest.json)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://casual-games-six.vercel.app/sw.js)"
+    ]
+  }
+}
