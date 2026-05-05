@@ -6,7 +6,7 @@ export const PLAYER_HEIGHT = 30
 const PADDING = 20
 const INVINCIBLE_DURATION = 2000
 const FIRE_INTERVAL = 200
-const PLAYER_SPEED = 700
+const FOLLOW_SPEED = 20
 
 export interface Player {
   x: number
@@ -39,17 +39,9 @@ export function updatePlayer(
   if (touch.active) {
     const targetX = Math.max(PADDING, Math.min(390 - PADDING, touch.x))
     const targetY = Math.max(PADDING, Math.min(844 - PADDING, touch.y))
-    const maxMove = PLAYER_SPEED * (delta / 1000)
-    const dx = targetX - player.x
-    const dy = targetY - player.y
-    const dist = Math.hypot(dx, dy)
-    if (dist <= maxMove) {
-      player.x = targetX
-      player.y = targetY
-    } else {
-      player.x += (dx / dist) * maxMove
-      player.y += (dy / dist) * maxMove
-    }
+    const t = 1 - Math.exp(-FOLLOW_SPEED * delta / 1000)
+    player.x += (targetX - player.x) * t
+    player.y += (targetY - player.y) * t
   }
   if (player.invincibleTimer > 0) {
     player.invincibleTimer = Math.max(0, player.invincibleTimer - delta)
