@@ -16,6 +16,7 @@ export default function GameCanvas({ onGameOver }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<ReturnType<typeof createGameEngine> | null>(null)
   const [hudData, setHudData] = useState({ score: 0, lives: 3, stage: 1 })
+  const [stateType, setStateType] = useState<GameState['type']>('IDLE')
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -38,6 +39,8 @@ export default function GameCanvas({ onGameOver }: Props) {
       canvas,
       touch,
       (state: GameState, score: ScoreState) => {
+        setStateType(state.type)
+
         if (state.type === 'GAME_OVER') {
           onGameOver(state.score, state.stage, score.highScore)
           return
@@ -75,6 +78,16 @@ export default function GameCanvas({ onGameOver }: Props) {
   }, [onGameOver])
 
 
+  const isPaused = stateType === 'PAUSED'
+  const showPauseButton = isPaused || ['PLAYING', 'BOSS_APPEARING', 'BOSS_FIGHT', 'STAGE_CLEAR'].includes(stateType)
+
+  const handlePauseToggle = () => {
+    const engine = engineRef.current
+    if (!engine) return
+    if (isPaused) engine.resume()
+    else engine.pause()
+  }
+
   return (
     <div style={{ position: 'relative', width: '390px', height: '844px' }}>
       <canvas
@@ -82,6 +95,52 @@ export default function GameCanvas({ onGameOver }: Props) {
         style={{ display: 'block', touchAction: 'none', userSelect: 'none' }}
       />
       <HUD score={hudData.score} lives={hudData.lives} stage={hudData.stage} />
+
+      {showPauseButton && (
+        <button
+          onClick={handlePauseToggle}
+          style={{
+            position: 'absolute',
+            bottom: '24px',
+            right: '16px',
+            width: '48px',
+            height: '48px',
+            background: 'rgba(255,255,255,0.15)',
+            border: '2px solid rgba(255,255,255,0.4)',
+            borderRadius: '50%',
+            color: '#FFFFFF',
+            fontSize: '18px',
+            lineHeight: 1,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {isPaused ? '▶' : '⏸'}
+        </button>
+      )}
+
+      {isPaused && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'monospace',
+            color: '#FFFFFF',
+            fontSize: '28px',
+            fontWeight: 'bold',
+            letterSpacing: '4px',
+            pointerEvents: 'none',
+          }}
+        >
+          PAUSED
+        </div>
+      )}
     </div>
   )
 }
