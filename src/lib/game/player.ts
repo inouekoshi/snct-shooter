@@ -2,8 +2,10 @@ import type { TouchBuffer } from './touch'
 import type { PowerUpKind } from './state'
 
 export const PLAYER_RADIUS = 12
-export const PLAYER_WIDTH = 24
-export const PLAYER_HEIGHT = 30
+export const MAX_LIVES = 5
+
+const PLAYER_WIDTH = 24
+const PLAYER_HEIGHT = 30
 const PADDING = 20
 const INVINCIBLE_DURATION = 2000
 const FOLLOW_SPEED = 20
@@ -74,7 +76,7 @@ export function resetFireTimer(player: Player): void {
 
 export function applyUpgrade(player: Player, kind: PowerUpKind): void {
   if (kind === 'HP') {
-    player.lives = Math.min(5, player.lives + 1)
+    player.lives = Math.min(MAX_LIVES, player.lives + 1)
   } else if (kind === 'FIRE_RATE') {
     player.fireInterval = Math.max(80, player.fireInterval - 30)
   } else if (kind === 'BULLET_SPEED') {

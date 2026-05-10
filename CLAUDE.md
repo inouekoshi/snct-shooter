@@ -3,7 +3,7 @@
 ## プロジェクト概要
 
 スマートフォンブラウザで動作する縦スクロールシューティングゲーム。  
-仕様書: `docs/spec.md`（v1.0.0 確定済み）
+仕様書: `docs/spec.md`（v1.2.0）
 
 ## 技術スタック
 
@@ -42,7 +42,7 @@ src/
       engine.ts           # ゲームループ
       state.ts            # State Machine（型定義と遷移）
       player.ts           # 自機
-      enemy.ts            # 敵（通常・攻撃・ボス）
+      enemy.ts            # 敵（通常・攻撃・回復・ボス）
       bullet.ts           # 弾（自機・敵）
       collision.ts        # 衝突判定（円同士）
       score.ts            # スコア・localStorage
@@ -87,6 +87,7 @@ type GameState =
   | { type: 'BOSS_APPEARING'; stage: number; elapsed: number }
   | { type: 'BOSS_FIGHT'; stage: number }
   | { type: 'STAGE_CLEAR'; stage: number; elapsed: number }
+  | { type: 'POWER_UP_SELECT'; stage: number; options: [PowerUpOption, PowerUpOption] }
   | { type: 'PAUSED'; resumeTo: GameState }
   | { type: 'COUNTDOWN'; resumeTo: GameState; remaining: number }
   | { type: 'GAME_OVER'; score: number; stage: number }
@@ -115,20 +116,22 @@ type GameState =
 
 ## ゲームパラメータ早見表
 
-| パラメータ | 値 |
-|---|---|
-| 自機当たり判定 | 半径 12px |
-| 無敵時間 | 2秒 |
-| 連射間隔 | 200ms |
-| 弾ダメージ | 10 |
-| 自機弾速 | 600px/秒 |
-| 移動可能範囲 | Canvas端から 20px パディング |
-| 雑魚敵（通常）当たり判定 | 半径 15px |
-| 攻撃敵当たり判定 | 半径 20px |
-| ボス当たり判定 | 半径 40px |
-| ボスHP（ステージ1） | 100（ステージ毎+50） |
-| ボス弾幕切替 | HP 50% 以下でパターン2 |
-| 星パーティクル数 | 約 80 個 |
+| パラメータ | 初期値 | 上限/下限 |
+|---|---|---|
+| 自機当たり判定 | 半径 12px | — |
+| 無敵時間 | 2秒 | — |
+| 連射間隔 | 200ms | 80ms（下限） |
+| 弾ダメージ | 10 | — |
+| 自機弾速 | 600px/秒 | 1080px/秒（上限） |
+| 残機 | 3 | 5（上限） |
+| 移動可能範囲 | Canvas端から 20px パディング | — |
+| 雑魚敵（通常）当たり判定 | 半径 15px | — |
+| 攻撃敵当たり判定 | 半径 20px | — |
+| 回復敵当たり判定 | 半径 14px | — |
+| ボス当たり判定 | 半径 40px | — |
+| ボスHP（ステージ1） | 100（ステージ毎+50） | — |
+| ボス弾幕切替 | HP 50% でパターン2、HP 25% でパターン3 | — |
+| 星パーティクル数 | 約 80 個 | — |
 
 ## コーディング規約
 

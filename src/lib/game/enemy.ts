@@ -15,14 +15,20 @@ export interface Enemy {
   fireInterval: number
   bulletSpeed: number
   score: number
-  vx: number         // horizontal velocity (0 = straight, ±N = zigzag)
-  movePhase: number  // boss rotation accumulator
+  vx: number
+  movePhase: number
+}
+
+const PLAYER_BASE_Y = 760
+
+function randomSpawnX(): number {
+  return 40 + Math.random() * 310
 }
 
 export function createNormalEnemy(diff: DifficultyParams): Enemy {
   return {
     kind: 'normal',
-    x: 40 + Math.random() * 310,
+    x: randomSpawnX(),
     y: -20,
     radius: 15,
     hp: 1,
@@ -41,7 +47,7 @@ export function createAttackEnemy(diff: DifficultyParams): Enemy {
   const zigzag = Math.random() < 0.4
   return {
     kind: 'attack',
-    x: 40 + Math.random() * 310,
+    x: randomSpawnX(),
     y: -20,
     radius: 20,
     hp: 30,
@@ -59,7 +65,7 @@ export function createAttackEnemy(diff: DifficultyParams): Enemy {
 export function createHealEnemy(): Enemy {
   return {
     kind: 'heal',
-    x: 40 + Math.random() * 310,
+    x: randomSpawnX(),
     y: -20,
     radius: 14,
     hp: 1,
@@ -114,16 +120,14 @@ export function updateEnemies(
       if (e.fireTimer <= 0) {
         e.fireTimer = e.fireInterval
         const dx = playerX - e.x
-        const dy = 760 - e.y
+        const dy = PLAYER_BASE_Y - e.y
         const dist = Math.sqrt(dx * dx + dy * dy) || 1
         const baseAngle = Math.atan2(dy, dx)
 
         if (e.vx === 0) {
-          // Aimed single shot
           const speed = e.bulletSpeed
           bullets.push(createEnemyBullet(e.x, e.y, (dx / dist) * speed, (dy / dist) * speed))
         } else {
-          // 3-way spread toward player
           for (const offset of [-20, 0, 20]) {
             const angle = baseAngle + (offset * Math.PI) / 180
             const speed = e.bulletSpeed * 0.85
@@ -152,21 +156,18 @@ function updateBoss(boss: Enemy, delta: number, playerX: number, bullets: Bullet
   if (boss.fireTimer <= 0) {
     const hpRatio = boss.hp / boss.maxHp
     if (hpRatio > 0.5) {
-      // Phase 1: single aimed shot
       boss.fireTimer = 800
       const tx = playerX - boss.x
-      const ty = 760 - boss.y
+      const ty = PLAYER_BASE_Y - boss.y
       const dist = Math.sqrt(tx * tx + ty * ty) || 1
       bullets.push(createEnemyBullet(boss.x, boss.y, (tx / dist) * 250, (ty / dist) * 250, true))
     } else if (hpRatio > 0.25) {
-      // Phase 2: 5-way fan
       boss.fireTimer = 1200
       for (const offset of [-40, -20, 0, 20, 40]) {
         const angle = Math.PI / 2 + (offset * Math.PI) / 180
         bullets.push(createEnemyBullet(boss.x, boss.y, Math.cos(angle) * 300, Math.sin(angle) * 300, true))
       }
     } else {
-      // Phase 3: rotating 3-way burst
       boss.fireTimer = 500
       boss.movePhase = (boss.movePhase + Math.PI / 6) % (Math.PI * 2)
       for (let i = 0; i < 3; i++) {
@@ -240,7 +241,6 @@ function renderBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
   ctx.closePath()
   ctx.fill()
 
-  // HP bar
   const barW = 100
   const barH = 8
   const barX = e.x - barW / 2

@@ -23,7 +23,7 @@ src/
 │       ├── engine.ts         # ゲームループ (requestAnimationFrame と delta-time 計算)
 │       ├── state.ts          # State Machine (型定義と状態遷移)
 │       ├── player.ts         # 自機の移動や弾の発射制御
-│       ├── enemy.ts          # 敵 (雑魚・攻撃型・ボス) の挙動とスポーンロジック
+│       ├── enemy.ts          # 敵 (雑魚・攻撃型・回復・ボス) の挙動とスポーンロジック
 │       ├── bullet.ts         # 自機・敵の弾の処理
 │       ├── collision.ts      # 円ベースの衝突判定モジュール
 │       ├── score.ts          # スコア計算と localStorage への永続化処理
@@ -48,9 +48,10 @@ src/
 
 - `IDLE`: スタート画面待機中
 - `PLAYING`: 通常プレイ中（敵の迎撃や回避）
-- `BOSS_APPEARING`: ボス出現前の演出状態（無敵）
+- `BOSS_APPEARING`: ボス出現前の演出状態（自機無敵）
 - `BOSS_FIGHT`: ボス戦闘中
-- `STAGE_CLEAR`: ボス撃破時のステージクリア演出
+- `STAGE_CLEAR`: ボス撃破時のステージクリア演出（2秒）
+- `POWER_UP_SELECT`: ステージクリア後のパワーアップ選択画面（タップで選択）
 - `PAUSED`: タブの移動やバックグラウンド移行時の自動一時停止
 - `COUNTDOWN`: PAUSED からの復帰カウントダウン
 - `GAME_OVER`: プレイヤーの残機がゼロになった状態

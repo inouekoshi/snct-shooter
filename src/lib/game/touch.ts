@@ -8,6 +8,19 @@ export function createTouchBuffer(): TouchBuffer {
   return { active: false, x: 0, y: 0 }
 }
 
+function toLogicalCoords(
+  clientX: number,
+  clientY: number,
+  canvas: HTMLCanvasElement,
+  rect: DOMRect
+): { x: number; y: number } {
+  const dpr = window.devicePixelRatio || 1
+  return {
+    x: (clientX - rect.left) * (canvas.width / dpr) / rect.width,
+    y: (clientY - rect.top) * (canvas.height / dpr) / rect.height,
+  }
+}
+
 export function registerTouchHandlers(
   canvas: HTMLCanvasElement,
   buffer: TouchBuffer
@@ -16,23 +29,19 @@ export function registerTouchHandlers(
     e.preventDefault()
     const t = e.touches[0]
     const rect = canvas.getBoundingClientRect()
-    const dpr = window.devicePixelRatio || 1
-    const toLogicalX = (canvas.width / dpr) / rect.width
-    const toLogicalY = (canvas.height / dpr) / rect.height
+    const { x, y } = toLogicalCoords(t.clientX, t.clientY, canvas, rect)
     buffer.active = true
-    buffer.x = (t.clientX - rect.left) * toLogicalX
-    buffer.y = (t.clientY - rect.top) * toLogicalY
+    buffer.x = x
+    buffer.y = y
   }
 
   const onMove = (e: TouchEvent) => {
     e.preventDefault()
     const t = e.touches[0]
     const rect = canvas.getBoundingClientRect()
-    const dpr = window.devicePixelRatio || 1
-    const toLogicalX = (canvas.width / dpr) / rect.width
-    const toLogicalY = (canvas.height / dpr) / rect.height
-    buffer.x = (t.clientX - rect.left) * toLogicalX
-    buffer.y = (t.clientY - rect.top) * toLogicalY
+    const { x, y } = toLogicalCoords(t.clientX, t.clientY, canvas, rect)
+    buffer.x = x
+    buffer.y = y
   }
 
   const onEnd = (e: TouchEvent) => {

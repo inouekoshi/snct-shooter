@@ -2,7 +2,8 @@ import type { GameState, PowerUpOption } from './state'
 import type { TouchBuffer } from './touch'
 import {
   createPlayer, updatePlayer, renderPlayer, canFire, resetFireTimer,
-  hitPlayer, isPlayerInvincible, resetPlayerPosition, applyUpgrade, PLAYER_RADIUS,
+  hitPlayer, isPlayerInvincible, resetPlayerPosition, applyUpgrade,
+  PLAYER_RADIUS, MAX_LIVES,
 } from './player'
 import {
   createNormalEnemy, createAttackEnemy, createBoss, createHealEnemy,
@@ -18,6 +19,9 @@ import { createScoreState, saveHighScore, type ScoreState } from './score'
 const STAR_COUNT = 80
 const BOSS_APPEARING_DURATION = 1500
 const STAGE_CLEAR_DURATION = 2000
+const CANVAS_W = 390
+const CANVAS_H = 844
+const CANVAS_CX = CANVAS_W / 2
 
 interface Star {
   x: number
@@ -28,8 +32,8 @@ interface Star {
 
 function createStars(): Star[] {
   return Array.from({ length: STAR_COUNT }, () => ({
-    x: Math.random() * 390,
-    y: Math.random() * 844,
+    x: Math.random() * CANVAS_W,
+    y: Math.random() * CANVAS_H,
     r: 0.5 + Math.random() * 1.5,
     speed: 20 + Math.random() * 40,
   }))
@@ -39,9 +43,9 @@ function updateStars(stars: Star[], delta: number): void {
   const dt = delta / 1000
   for (const s of stars) {
     s.y += s.speed * dt
-    if (s.y > 844) {
+    if (s.y > CANVAS_H) {
       s.y = -2
-      s.x = Math.random() * 390
+      s.x = Math.random() * CANVAS_W
     }
   }
 }
@@ -53,6 +57,35 @@ function renderStars(ctx: CanvasRenderingContext2D, stars: Star[]): void {
     ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
     ctx.fill()
   }
+}
+
+function generateOptions(): [PowerUpOption, PowerUpOption] {
+  const left: PowerUpOption = { kind: 'HP', label: 'HP +1', sub: '残機を1回復' }
+  const candidates: PowerUpOption[] = [
+    { kind: 'FIRE_RATE', label: '連射強化', sub: '発射間隔 -30ms' },
+    { kind: 'BULLET_SPEED', label: '弾速強化', sub: '弾速 +20%' },
+  ]
+  const right = candidates[Math.floor(Math.random() * candidates.length)]
+  return [left, right]
+}
+
+function drawOptionBox(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number,
+  opt: PowerUpOption, color: string
+): void {
+  ctx.fillStyle = color
+  ctx.strokeStyle = '#FFFFFF'
+  ctx.lineWidth = 2
+  ctx.fillRect(x, y, w, h)
+  ctx.strokeRect(x, y, w, h)
+
+  ctx.fillStyle = '#FFFFFF'
+  ctx.font = 'bold 22px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText(opt.label, x + w / 2, y + h / 2 - 10)
+  ctx.font = '16px sans-serif'
+  ctx.fillText(opt.sub, x + w / 2, y + h / 2 + 20)
 }
 
 export interface GameEngine {
@@ -99,35 +132,6 @@ export function createGameEngine(
     notify()
   }
 
-  function generateOptions(): [PowerUpOption, PowerUpOption] {
-    const left: PowerUpOption = { kind: 'HP', label: 'HP +1', sub: '残機を1回復' }
-    const candidates: PowerUpOption[] = [
-      { kind: 'FIRE_RATE', label: '連射強化', sub: '発射間隔 -30ms' },
-      { kind: 'BULLET_SPEED', label: '弾速強化', sub: '弾速 +20%' },
-    ]
-    const right = candidates[Math.floor(Math.random() * candidates.length)]
-    return [left, right]
-  }
-
-  function drawOptionBox(
-    ctx: CanvasRenderingContext2D,
-    x: number, y: number, w: number, h: number,
-    opt: PowerUpOption, color: string
-  ): void {
-    ctx.fillStyle = color
-    ctx.strokeStyle = '#FFFFFF'
-    ctx.lineWidth = 2
-    ctx.fillRect(x, y, w, h)
-    ctx.strokeRect(x, y, w, h)
-
-    ctx.fillStyle = '#FFFFFF'
-    ctx.font = 'bold 22px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(opt.label, x + w / 2, y + h / 2 - 10)
-    ctx.font = '16px sans-serif'
-    ctx.fillText(opt.sub, x + w / 2, y + h / 2 + 20)
-  }
-
   function startStage(stage: number): void {
     stageScore = 0
     enemySpawnTimer = 0
@@ -136,6 +140,14 @@ export function createGameEngine(
     enemies = []
     bullets = []
     setState({ type: 'PLAYING', stage })
+  }
+
+  function triggerGameOver(stage: number): void {
+    if (score.total > score.highScore) {
+      score.highScore = score.total
+      saveHighScore(score.highScore)
+    }
+    setState({ type: 'GAME_OVER', score: score.total, stage })
   }
 
   function loop(currentTime: number): void {
@@ -183,7 +195,7 @@ export function createGameEngine(
     if (state.type === 'POWER_UP_SELECT') {
       if (hasTap) {
         hasTap = false
-        const chosen = tapX < 195 ? state.options[0] : state.options[1]
+        const chosen = tapX < CANVAS_CX ? state.options[0] : state.options[1]
         applyUpgrade(player, chosen.kind)
         resetPlayerPosition(player)
         startStage(state.stage + 1)
@@ -194,15 +206,15 @@ export function createGameEngine(
     updatePlayer(player, touch, delta)
 
     if (state.type === 'PLAYING' || state.type === 'BOSS_FIGHT') {
-      // Fire
+      const stage = (state as { stage: number }).stage
+
       if (canFire(player)) {
         bullets.push(createPlayerBullet(player.x, player.y - 15, player.bulletSpeed))
         resetFireTimer(player)
       }
 
-      // Spawn enemies (PLAYING only)
       if (state.type === 'PLAYING') {
-        const diff = getDifficulty(state.stage)
+        const diff = getDifficulty(stage)
         enemySpawnTimer -= delta
         if (enemySpawnTimer <= 0) {
           enemySpawnTimer = diff.normalEnemyInterval
@@ -228,7 +240,6 @@ export function createGameEngine(
       bullets = removeOffscreenBullets(bullets)
       enemies = removeOffscreenEnemies(enemies)
 
-      // Player bullets vs enemies
       const remainingBullets: Bullet[] = []
       for (const b of bullets) {
         if (b.isEnemy) {
@@ -247,21 +258,20 @@ export function createGameEngine(
       }
       bullets = remainingBullets
 
-      // Remove dead enemies & add score
       const deadEnemies = enemies.filter((e) => e.hp <= 0)
       for (const e of deadEnemies) {
         score.total += e.score
         stageScore += e.score
         if (e.kind === 'heal') {
-          player.lives = Math.min(player.lives + 1, 5)
+          player.lives = Math.min(MAX_LIVES, player.lives + 1)
         }
         if (e.kind === 'boss') {
-          score.total += state.stage * 100 // stage clear bonus
+          score.total += stage * 100
           if (score.total > score.highScore) {
             score.highScore = score.total
             saveHighScore(score.highScore)
           }
-          setState({ type: 'STAGE_CLEAR', stage: state.stage, elapsed: 0 })
+          setState({ type: 'STAGE_CLEAR', stage, elapsed: 0 })
           enemies = []
           bullets = bullets.filter((b) => !b.isEnemy)
           return
@@ -269,21 +279,19 @@ export function createGameEngine(
       }
       enemies = enemies.filter((e) => e.hp > 0)
 
-      // Check boss threshold
       if (state.type === 'PLAYING') {
-        const diff = getDifficulty(state.stage)
+        const diff = getDifficulty(stage)
         if (stageScore >= diff.bossScoreThreshold) {
-          const bossEnemy = createBoss(state.stage, diff)
+          const bossEnemy = createBoss(stage, diff)
           enemies = []
           bullets = bullets.filter((b) => !b.isEnemy)
           enemies.push(bossEnemy)
-          setState({ type: 'BOSS_APPEARING', stage: state.stage, elapsed: 0 })
+          setState({ type: 'BOSS_APPEARING', stage, elapsed: 0 })
           player.invincibleTimer = BOSS_APPEARING_DURATION + 200
           return
         }
       }
 
-      // Enemy bullets vs player
       if (!isPlayerInvincible(player)) {
         for (const b of bullets) {
           if (!b.isEnemy) continue
@@ -291,29 +299,20 @@ export function createGameEngine(
             hitPlayer(player)
             bullets = bullets.filter((x) => x !== b)
             if (player.lives <= 0) {
-              if (score.total > score.highScore) {
-                score.highScore = score.total
-                saveHighScore(score.highScore)
-              }
-              setState({ type: 'GAME_OVER', score: score.total, stage: (state as { stage: number }).stage })
+              triggerGameOver(stage)
               return
             }
             break
           }
         }
 
-        // Enemy body vs player
         for (const e of enemies) {
           if (e.kind === 'boss') continue
           if (circlesOverlap(e.x, e.y, e.radius, player.x, player.y, PLAYER_RADIUS)) {
             hitPlayer(player)
             enemies = enemies.filter((x) => x !== e)
             if (player.lives <= 0) {
-              if (score.total > score.highScore) {
-                score.highScore = score.total
-                saveHighScore(score.highScore)
-              }
-              setState({ type: 'GAME_OVER', score: score.total, stage: (state as { stage: number }).stage })
+              triggerGameOver(stage)
               return
             }
             break
@@ -345,9 +344,9 @@ export function createGameEngine(
 
   function render(): void {
     const dpr = window.devicePixelRatio || 1
-    ctx.clearRect(0, 0, 390, 844)
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H)
     ctx.fillStyle = '#000000'
-    ctx.fillRect(0, 0, 390, 844)
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
 
     renderStars(ctx, stars)
 
@@ -359,48 +358,47 @@ export function createGameEngine(
 
     if (state.type === 'BOSS_APPEARING') {
       ctx.fillStyle = 'rgba(170,0,255,0.3)'
-      ctx.fillRect(0, 0, 390, 844)
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
       ctx.fillStyle = '#FFFFFF'
       ctx.font = 'bold 36px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText('BOSS!', 195, 422)
+      ctx.fillText('BOSS!', CANVAS_CX, 422)
     }
 
     if (state.type === 'STAGE_CLEAR') {
       ctx.fillStyle = 'rgba(0,0,0,0.5)'
-      ctx.fillRect(0, 0, 390, 844)
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
       ctx.fillStyle = '#FFFFFF'
       ctx.font = 'bold 42px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText('STAGE CLEAR!', 195, 400)
+      ctx.fillText('STAGE CLEAR!', CANVAS_CX, 400)
       ctx.font = '24px sans-serif'
-      ctx.fillText(`BONUS +${(state as { stage: number }).stage * 100}`, 195, 450)
+      ctx.fillText(`BONUS +${state.stage * 100}`, CANVAS_CX, 450)
     }
 
     if (state.type === 'POWER_UP_SELECT') {
       ctx.fillStyle = 'rgba(0,0,0,0.75)'
-      ctx.fillRect(0, 0, 390, 844)
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
       ctx.fillStyle = '#FFFFFF'
       ctx.font = 'bold 28px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText('POWER UP!', 195, 200)
+      ctx.fillText('POWER UP!', CANVAS_CX, 200)
       ctx.font = '18px sans-serif'
-      ctx.fillText('どちらかを選んでタップ', 195, 240)
+      ctx.fillText('どちらかを選んでタップ', CANVAS_CX, 240)
       drawOptionBox(ctx, 20, 300, 165, 220, state.options[0], '#1A4488')
       drawOptionBox(ctx, 205, 300, 165, 220, state.options[1], '#885500')
     }
 
     if (state.type === 'COUNTDOWN') {
       ctx.fillStyle = 'rgba(0,0,0,0.5)'
-      ctx.fillRect(0, 0, 390, 844)
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
       ctx.fillStyle = '#FFFFFF'
       ctx.font = 'bold 72px sans-serif'
       ctx.textAlign = 'center'
-      const remaining = (state as { remaining: number }).remaining
-      ctx.fillText(String(Math.ceil(remaining / 1000)), 195, 450)
+      ctx.fillText(String(Math.ceil(state.remaining / 1000)), CANVAS_CX, 450)
     }
 
-    void dpr // used via ctx.scale in parent
+    void dpr
   }
 
   return {
@@ -410,7 +408,6 @@ export function createGameEngine(
 
     start() {
       hasTap = false
-      healSpawnTimer = 15000 + Math.random() * 10000
       player = createPlayer()
       score = createScoreState(score.highScore)
       startStage(1)
