@@ -335,6 +335,7 @@ export function createGameEngine(
     if (state.type === 'STAGE_CLEAR') {
       const elapsed = state.elapsed + delta
       if (elapsed >= STAGE_CLEAR_DURATION) {
+        hasTap = false
         setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generateOptions() })
       } else {
         setState({ ...state, elapsed })
