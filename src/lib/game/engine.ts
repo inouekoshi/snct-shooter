@@ -3,7 +3,7 @@ import type { TouchBuffer } from './touch'
 import {
   createPlayer, updatePlayer, renderPlayer, canFire, resetFireTimer,
   hitPlayer, isPlayerInvincible, resetPlayerPosition, applyUpgrade,
-  PLAYER_RADIUS, MAX_LIVES,
+  PLAYER_RADIUS,
 } from './player'
 import {
   createNormalEnemy, createAttackEnemy, createBoss, createHealEnemy,
@@ -268,7 +268,7 @@ export function createGameEngine(
         score.total += e.score
         stageScore += e.score
         if (e.kind === 'heal') {
-          player.lives = Math.min(MAX_LIVES, player.lives + 1)
+          player.lives += 1
         }
         if (e.kind === 'boss') {
           score.total += stage * 100
