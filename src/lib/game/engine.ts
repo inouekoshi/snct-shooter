@@ -122,6 +122,7 @@ export function createGameEngine(
   let tapY = 0
   let hasTap = false
   let healSpawnTimer = 0
+  let powerUpCanAcceptTap = false
 
   function notify(): void {
     onStateChange(state, score)
@@ -193,7 +194,11 @@ export function createGameEngine(
     if (state.type === 'IDLE' || state.type === 'GAME_OVER') return
 
     if (state.type === 'POWER_UP_SELECT') {
-      if (hasTap) {
+      if (!powerUpCanAcceptTap && !touch.active) {
+        powerUpCanAcceptTap = true
+        hasTap = false
+      }
+      if (powerUpCanAcceptTap && hasTap) {
         hasTap = false
         const chosen = tapX < CANVAS_CX ? state.options[0] : state.options[1]
         applyUpgrade(player, chosen.kind)
@@ -336,6 +341,7 @@ export function createGameEngine(
       const elapsed = state.elapsed + delta
       if (elapsed >= STAGE_CLEAR_DURATION) {
         hasTap = false
+        powerUpCanAcceptTap = !touch.active
         setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generateOptions() })
       } else {
         setState({ ...state, elapsed })
