@@ -1,7 +1,7 @@
 import type { DifficultyParams } from './difficulty'
 import { createEnemyBullet, type Bullet } from './bullet'
 
-export type EnemyKind = 'normal' | 'attack' | 'boss'
+export type EnemyKind = 'normal' | 'attack' | 'boss' | 'heal'
 
 export interface Enemy {
   kind: EnemyKind
@@ -56,6 +56,24 @@ export function createAttackEnemy(diff: DifficultyParams): Enemy {
   }
 }
 
+export function createHealEnemy(): Enemy {
+  return {
+    kind: 'heal',
+    x: 40 + Math.random() * 310,
+    y: -20,
+    radius: 14,
+    hp: 1,
+    maxHp: 1,
+    speed: 65,
+    fireTimer: 0,
+    fireInterval: Infinity,
+    bulletSpeed: 0,
+    score: 0,
+    vx: 0,
+    movePhase: 0,
+  }
+}
+
 export function createBoss(stage: number, diff: DifficultyParams): Enemy {
   return {
     kind: 'boss',
@@ -82,7 +100,7 @@ export function updateEnemies(
 ): void {
   const dt = delta / 1000
   for (const e of enemies) {
-    if (e.kind === 'normal') {
+    if (e.kind === 'normal' || e.kind === 'heal') {
       e.y += e.speed * dt
     } else if (e.kind === 'attack') {
       e.y += e.speed * dt
@@ -171,8 +189,20 @@ export function renderEnemies(ctx: CanvasRenderingContext2D, enemies: Enemy[]): 
       renderAttackEnemy(ctx, e)
     } else if (e.kind === 'boss') {
       renderBoss(ctx, e)
+    } else if (e.kind === 'heal') {
+      renderHealEnemy(ctx, e)
     }
   }
+}
+
+function renderHealEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
+  ctx.fillStyle = '#00CC88'
+  ctx.beginPath()
+  ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#FFFFFF'
+  ctx.fillRect(e.x - 6, e.y - 2, 12, 4)
+  ctx.fillRect(e.x - 2, e.y - 6, 4, 12)
 }
 
 function renderNormalEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {

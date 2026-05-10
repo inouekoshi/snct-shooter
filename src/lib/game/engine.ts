@@ -5,7 +5,7 @@ import {
   hitPlayer, isPlayerInvincible, resetPlayerPosition, applyUpgrade, PLAYER_RADIUS,
 } from './player'
 import {
-  createNormalEnemy, createAttackEnemy, createBoss,
+  createNormalEnemy, createAttackEnemy, createBoss, createHealEnemy,
   updateEnemies, removeOffscreenEnemies, renderEnemies, type Enemy,
 } from './enemy'
 import {
@@ -88,6 +88,7 @@ export function createGameEngine(
   let tapX = 0
   let tapY = 0
   let hasTap = false
+  let healSpawnTimer = 0
 
   function notify(): void {
     onStateChange(state, score)
@@ -131,6 +132,7 @@ export function createGameEngine(
     stageScore = 0
     enemySpawnTimer = 0
     normalsSinceLastAttack = 0
+    healSpawnTimer = 15000 + Math.random() * 10000
     enemies = []
     bullets = []
     setState({ type: 'PLAYING', stage })
@@ -213,6 +215,12 @@ export function createGameEngine(
             normalsSinceLastAttack++
           }
         }
+
+        healSpawnTimer -= delta
+        if (healSpawnTimer <= 0) {
+          healSpawnTimer = 15000 + Math.random() * 10000
+          enemies.push(createHealEnemy())
+        }
       }
 
       updateEnemies(enemies, delta, player.x, bullets)
@@ -244,6 +252,9 @@ export function createGameEngine(
       for (const e of deadEnemies) {
         score.total += e.score
         stageScore += e.score
+        if (e.kind === 'heal') {
+          player.lives = Math.min(player.lives + 1, 5)
+        }
         if (e.kind === 'boss') {
           score.total += state.stage * 100 // stage clear bonus
           if (score.total > score.highScore) {
@@ -399,6 +410,7 @@ export function createGameEngine(
 
     start() {
       hasTap = false
+      healSpawnTimer = 15000 + Math.random() * 10000
       player = createPlayer()
       score = createScoreState(score.highScore)
       startStage(1)
