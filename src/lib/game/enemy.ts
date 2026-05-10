@@ -15,6 +15,8 @@ export interface Enemy {
   fireInterval: number
   bulletSpeed: number
   score: number
+  vx: number         // horizontal velocity (0 = straight, ±N = zigzag)
+  movePhase: number  // boss rotation accumulator
 }
 
 export function createNormalEnemy(diff: DifficultyParams): Enemy {
@@ -30,10 +32,13 @@ export function createNormalEnemy(diff: DifficultyParams): Enemy {
     fireInterval: Infinity,
     bulletSpeed: 0,
     score: 10,
+    vx: 0,
+    movePhase: 0,
   }
 }
 
 export function createAttackEnemy(diff: DifficultyParams): Enemy {
+  const zigzag = Math.random() < 0.4
   return {
     kind: 'attack',
     x: 40 + Math.random() * 310,
@@ -46,6 +51,8 @@ export function createAttackEnemy(diff: DifficultyParams): Enemy {
     fireInterval: diff.attackEnemyFireInterval,
     bulletSpeed: diff.attackEnemyBulletSpeed,
     score: 30,
+    vx: zigzag ? (Math.random() < 0.5 ? 1 : -1) * 70 : 0,
+    movePhase: 0,
   }
 }
 
@@ -62,6 +69,8 @@ export function createBoss(stage: number, diff: DifficultyParams): Enemy {
     fireInterval: 800,
     bulletSpeed: 250,
     score: 500,
+    vx: 0,
+    movePhase: 0,
   }
 }
 
@@ -77,14 +86,32 @@ export function updateEnemies(
       e.y += e.speed * dt
     } else if (e.kind === 'attack') {
       e.y += e.speed * dt
+
+      if (e.vx !== 0) {
+        e.x += e.vx * dt
+        if (e.x < 30 || e.x > 360) e.vx = -e.vx
+      }
+
       e.fireTimer -= delta
       if (e.fireTimer <= 0) {
         e.fireTimer = e.fireInterval
         const dx = playerX - e.x
         const dy = 760 - e.y
         const dist = Math.sqrt(dx * dx + dy * dy) || 1
-        const speed = e.bulletSpeed
-        bullets.push(createEnemyBullet(e.x, e.y, (dx / dist) * speed, (dy / dist) * speed))
+        const baseAngle = Math.atan2(dy, dx)
+
+        if (e.vx === 0) {
+          // Aimed single shot
+          const speed = e.bulletSpeed
+          bullets.push(createEnemyBullet(e.x, e.y, (dx / dist) * speed, (dy / dist) * speed))
+        } else {
+          // 3-way spread toward player
+          for (const offset of [-20, 0, 20]) {
+            const angle = baseAngle + (offset * Math.PI) / 180
+            const speed = e.bulletSpeed * 0.85
+            bullets.push(createEnemyBullet(e.x, e.y, Math.cos(angle) * speed, Math.sin(angle) * speed))
+          }
+        }
       }
     } else if (e.kind === 'boss') {
       updateBoss(e, delta, playerX, bullets)
@@ -95,33 +122,38 @@ export function updateEnemies(
 function updateBoss(boss: Enemy, delta: number, playerX: number, bullets: Bullet[]): void {
   const dt = delta / 1000
 
-  // Move horizontally toward player X
   const dx = playerX - boss.x
   const moveX = Math.min(Math.abs(dx), boss.speed * dt) * Math.sign(dx)
   boss.x = Math.max(50, Math.min(340, boss.x + moveX))
 
-  // Move into position (top quarter)
   if (boss.y < 120) {
     boss.y = Math.min(120, boss.y + boss.speed * dt)
   }
 
-  // Fire
   boss.fireTimer -= delta
   if (boss.fireTimer <= 0) {
     const hpRatio = boss.hp / boss.maxHp
     if (hpRatio > 0.5) {
-      // Pattern 1: single aimed shot
+      // Phase 1: single aimed shot
       boss.fireTimer = 800
       const tx = playerX - boss.x
       const ty = 760 - boss.y
       const dist = Math.sqrt(tx * tx + ty * ty) || 1
       bullets.push(createEnemyBullet(boss.x, boss.y, (tx / dist) * 250, (ty / dist) * 250, true))
-    } else {
-      // Pattern 2: fan 5-way (downward spread ±40°)
+    } else if (hpRatio > 0.25) {
+      // Phase 2: 5-way fan
       boss.fireTimer = 1200
       for (const offset of [-40, -20, 0, 20, 40]) {
         const angle = Math.PI / 2 + (offset * Math.PI) / 180
         bullets.push(createEnemyBullet(boss.x, boss.y, Math.cos(angle) * 300, Math.sin(angle) * 300, true))
+      }
+    } else {
+      // Phase 3: rotating 3-way burst
+      boss.fireTimer = 500
+      boss.movePhase = (boss.movePhase + Math.PI / 6) % (Math.PI * 2)
+      for (let i = 0; i < 3; i++) {
+        const angle = boss.movePhase + (i * Math.PI * 2) / 3
+        bullets.push(createEnemyBullet(boss.x, boss.y, Math.cos(angle) * 320, Math.sin(angle) * 320, true))
       }
     }
   }
@@ -156,7 +188,7 @@ function renderNormalEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
 
 function renderAttackEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const s = e.radius
-  ctx.fillStyle = '#FF8800'
+  ctx.fillStyle = e.vx !== 0 ? '#FFAA00' : '#FF8800'
   ctx.beginPath()
   ctx.moveTo(e.x, e.y + s)
   ctx.lineTo(e.x - s, e.y - s)
@@ -169,7 +201,6 @@ function renderBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const r = e.radius
   ctx.fillStyle = '#AA00FF'
   ctx.beginPath()
-  // Hexagon
   for (let i = 0; i < 6; i++) {
     const angle = (i * Math.PI) / 3 - Math.PI / 6
     const px = e.x + Math.cos(angle) * r * 1.4
