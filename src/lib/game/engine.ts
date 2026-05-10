@@ -1,8 +1,8 @@
-import type { GameState } from './state'
+import type { GameState, PowerUpOption } from './state'
 import type { TouchBuffer } from './touch'
 import {
   createPlayer, updatePlayer, renderPlayer, canFire, resetFireTimer,
-  hitPlayer, isPlayerInvincible, resetPlayerPosition, PLAYER_RADIUS,
+  hitPlayer, isPlayerInvincible, resetPlayerPosition, applyUpgrade, PLAYER_RADIUS,
 } from './player'
 import {
   createNormalEnemy, createAttackEnemy, createBoss,
@@ -84,6 +84,10 @@ export function createGameEngine(
   let animId = 0
   let prevTime = 0
   let running = false
+  let prevTouchActive = false
+  let tapX = 0
+  let tapY = 0
+  let hasTap = false
 
   function notify(): void {
     onStateChange(state, score)
@@ -92,6 +96,35 @@ export function createGameEngine(
   function setState(next: GameState): void {
     state = next
     notify()
+  }
+
+  function generateOptions(): [PowerUpOption, PowerUpOption] {
+    const left: PowerUpOption = { kind: 'HP', label: 'HP +1', sub: '残機を1回復' }
+    const candidates: PowerUpOption[] = [
+      { kind: 'FIRE_RATE', label: '連射強化', sub: '発射間隔 -30ms' },
+      { kind: 'BULLET_SPEED', label: '弾速強化', sub: '弾速 +20%' },
+    ]
+    const right = candidates[Math.floor(Math.random() * candidates.length)]
+    return [left, right]
+  }
+
+  function drawOptionBox(
+    ctx: CanvasRenderingContext2D,
+    x: number, y: number, w: number, h: number,
+    opt: PowerUpOption, color: string
+  ): void {
+    ctx.fillStyle = color
+    ctx.strokeStyle = '#FFFFFF'
+    ctx.lineWidth = 2
+    ctx.fillRect(x, y, w, h)
+    ctx.strokeRect(x, y, w, h)
+
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = 'bold 22px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(opt.label, x + w / 2, y + h / 2 - 10)
+    ctx.font = '16px sans-serif'
+    ctx.fillText(opt.sub, x + w / 2, y + h / 2 + 20)
   }
 
   function startStage(stage: number): void {
@@ -117,6 +150,13 @@ export function createGameEngine(
   function update(delta: number): void {
     updateStars(stars, delta)
 
+    if (prevTouchActive && !touch.active) {
+      hasTap = true
+      tapX = touch.x
+      tapY = touch.y
+    }
+    prevTouchActive = touch.active
+
     if (state.type === 'COUNTDOWN') {
       const next = state.remaining - delta
       if (next <= 0) {
@@ -131,18 +171,30 @@ export function createGameEngine(
       } else {
         setState({ ...state, remaining: next })
       }
+      hasTap = false
       return
     }
 
     if (state.type === 'PAUSED') return
     if (state.type === 'IDLE' || state.type === 'GAME_OVER') return
 
+    if (state.type === 'POWER_UP_SELECT') {
+      if (hasTap) {
+        hasTap = false
+        const chosen = tapX < 195 ? state.options[0] : state.options[1]
+        applyUpgrade(player, chosen.kind)
+        resetPlayerPosition(player)
+        startStage(state.stage + 1)
+      }
+      return
+    }
+
     updatePlayer(player, touch, delta)
 
     if (state.type === 'PLAYING' || state.type === 'BOSS_FIGHT') {
       // Fire
       if (canFire(player)) {
-        bullets.push(createPlayerBullet(player.x, player.y - 15))
+        bullets.push(createPlayerBullet(player.x, player.y - 15, player.bulletSpeed))
         resetFireTimer(player)
       }
 
@@ -273,8 +325,7 @@ export function createGameEngine(
     if (state.type === 'STAGE_CLEAR') {
       const elapsed = state.elapsed + delta
       if (elapsed >= STAGE_CLEAR_DURATION) {
-        resetPlayerPosition(player)
-        startStage(state.stage + 1)
+        setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generateOptions() })
       } else {
         setState({ ...state, elapsed })
       }
@@ -315,6 +366,19 @@ export function createGameEngine(
       ctx.fillText(`BONUS +${(state as { stage: number }).stage * 100}`, 195, 450)
     }
 
+    if (state.type === 'POWER_UP_SELECT') {
+      ctx.fillStyle = 'rgba(0,0,0,0.75)'
+      ctx.fillRect(0, 0, 390, 844)
+      ctx.fillStyle = '#FFFFFF'
+      ctx.font = 'bold 28px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('POWER UP!', 195, 200)
+      ctx.font = '18px sans-serif'
+      ctx.fillText('どちらかを選んでタップ', 195, 240)
+      drawOptionBox(ctx, 20, 300, 165, 220, state.options[0], '#1A4488')
+      drawOptionBox(ctx, 205, 300, 165, 220, state.options[1], '#885500')
+    }
+
     if (state.type === 'COUNTDOWN') {
       ctx.fillStyle = 'rgba(0,0,0,0.5)'
       ctx.fillRect(0, 0, 390, 844)
@@ -334,6 +398,7 @@ export function createGameEngine(
     get lives() { return player.lives },
 
     start() {
+      hasTap = false
       player = createPlayer()
       score = createScoreState(score.highScore)
       startStage(1)
@@ -357,7 +422,8 @@ export function createGameEngine(
         state.type === 'PLAYING' ||
         state.type === 'BOSS_APPEARING' ||
         state.type === 'BOSS_FIGHT' ||
-        state.type === 'STAGE_CLEAR'
+        state.type === 'STAGE_CLEAR' ||
+        state.type === 'POWER_UP_SELECT'
       ) {
         cancelAnimationFrame(animId)
         running = false

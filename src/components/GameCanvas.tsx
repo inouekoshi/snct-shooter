@@ -79,7 +79,7 @@ export default function GameCanvas({ onGameOver }: Props) {
 
 
   const isPaused = stateType === 'PAUSED'
-  const showPauseButton = isPaused || ['PLAYING', 'BOSS_APPEARING', 'BOSS_FIGHT', 'STAGE_CLEAR'].includes(stateType)
+  const showPauseButton = isPaused || ['PLAYING', 'BOSS_APPEARING', 'BOSS_FIGHT', 'STAGE_CLEAR', 'POWER_UP_SELECT'].includes(stateType)
 
   const handlePauseToggle = () => {
     const engine = engineRef.current

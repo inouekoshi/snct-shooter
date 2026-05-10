@@ -1,11 +1,11 @@
 import type { TouchBuffer } from './touch'
+import type { PowerUpKind } from './state'
 
 export const PLAYER_RADIUS = 12
 export const PLAYER_WIDTH = 24
 export const PLAYER_HEIGHT = 30
 const PADDING = 20
 const INVINCIBLE_DURATION = 2000
-const FIRE_INTERVAL = 200
 const FOLLOW_SPEED = 20
 
 export interface Player {
@@ -14,6 +14,8 @@ export interface Player {
   lives: number
   invincibleTimer: number
   fireTimer: number
+  fireInterval: number
+  bulletSpeed: number
 }
 
 export function createPlayer(): Player {
@@ -23,6 +25,8 @@ export function createPlayer(): Player {
     lives: 3,
     invincibleTimer: 0,
     fireTimer: 0,
+    fireInterval: 200,
+    bulletSpeed: 600,
   }
 }
 
@@ -65,7 +69,17 @@ export function canFire(player: Player): boolean {
 }
 
 export function resetFireTimer(player: Player): void {
-  player.fireTimer = FIRE_INTERVAL
+  player.fireTimer = player.fireInterval
+}
+
+export function applyUpgrade(player: Player, kind: PowerUpKind): void {
+  if (kind === 'HP') {
+    player.lives = Math.min(5, player.lives + 1)
+  } else if (kind === 'FIRE_RATE') {
+    player.fireInterval = Math.max(80, player.fireInterval - 30)
+  } else if (kind === 'BULLET_SPEED') {
+    player.bulletSpeed = Math.min(1080, player.bulletSpeed + 120)
+  }
 }
 
 export function renderPlayer(ctx: CanvasRenderingContext2D, player: Player): void {
