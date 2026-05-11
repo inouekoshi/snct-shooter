@@ -15,15 +15,15 @@ function lerp(a: number, b: number, t: number): number {
 }
 
 export function getDifficulty(stage: number): DifficultyParams {
-  const t = Math.max(0, Math.min((stage - 1) / 4, 1))
+  const t = Math.max(0, Math.min((stage - 1) / 7, 1))
 
   const attackRatioTable: Record<number, number> = {
-    1: 0,
+    1: 5,
     2: 4,
     3: 3,
-    4: 2,
+    4: 3,
   }
-  const attackRatio = stage >= 5 ? 1 : (attackRatioTable[stage] ?? 0)
+  const attackRatio = stage >= 5 ? 2 : (attackRatioTable[stage] ?? 0)
 
   const bossThresholdTable: Record<number, number> = {
     1: 300,
@@ -32,9 +32,9 @@ export function getDifficulty(stage: number): DifficultyParams {
   const bossThreshold = bossThresholdTable[stage] ?? 700
 
   return {
-    normalEnemySpeed: lerp(80, 200, t),
-    normalEnemyInterval: lerp(1200, 400, t),
-    attackEnemySpeed: lerp(60, 140, t),
+    normalEnemySpeed: lerp(110, 200, t),
+    normalEnemyInterval: lerp(900, 400, t),
+    attackEnemySpeed: lerp(90, 140, t),
     attackEnemyBulletSpeed: lerp(200, 350, t),
     attackEnemyFireInterval: lerp(2000, 800, t),
     attackEnemySpawnRatio: attackRatio,
