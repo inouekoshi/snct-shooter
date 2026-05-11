@@ -55,6 +55,7 @@ src/
 - `PAUSED`: タブの移動やバックグラウンド移行時の自動一時停止
 - `COUNTDOWN`: PAUSED からの復帰カウントダウン
 - `GAME_OVER`: プレイヤーの残機がゼロになった状態
+- `GAME_CLEAR`: 全8ステージをクリアした状態
 
 ### 2.3 描画システム (Canvas API)
 React のステートを用いずに、直接 HTML Canvas 2D API (`GameCanvas.tsx`) を操作して描画します。
