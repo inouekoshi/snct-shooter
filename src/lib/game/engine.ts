@@ -59,13 +59,20 @@ function renderStars(ctx: CanvasRenderingContext2D, stars: Star[]): void {
   }
 }
 
-function generateOptions(): [PowerUpOption, PowerUpOption] {
+function generateOptions(stage: number, weaponLevel: number): [PowerUpOption, PowerUpOption] {
   const left: PowerUpOption = { kind: 'HP', label: 'HP +1', sub: '残機を1回復' }
   const candidates: PowerUpOption[] = [
     { kind: 'FIRE_RATE', label: '連射強化', sub: '発射間隔 -30ms' },
     { kind: 'BULLET_SPEED', label: '弾速強化', sub: '弾速 +20%' },
   ]
-  const right = candidates[Math.floor(Math.random() * candidates.length)]
+  
+  let right: PowerUpOption;
+  if ((stage === 3 || stage === 5) && weaponLevel < 3) {
+    right = { kind: 'WEAPON_UPGRADE', label: '武器強化', sub: '攻撃パターンが進化' }
+  } else {
+    right = candidates[Math.floor(Math.random() * candidates.length)]
+  }
+  
   return [left, right]
 }
 
@@ -361,7 +368,7 @@ export function createGameEngine(
           setState({ type: 'GAME_CLEAR', score: score.total, stage: state.stage })
         } else {
           powerUpCanAcceptTap = !touch.active
-          setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generateOptions() })
+          setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generateOptions(state.stage, player.weaponLevel) })
         }
       } else {
         setState({ ...state, elapsed })
