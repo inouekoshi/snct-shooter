@@ -79,6 +79,8 @@ export function resetFireTimer(player: Player): void {
 export function applyUpgrade(player: Player, kind: PowerUpKind): void {
   if (kind === 'HP') {
     player.lives += 1
+  } else if (kind === 'HP_2') {
+    player.lives += 2
   } else if (kind === 'FIRE_RATE') {
     player.fireInterval = Math.max(80, player.fireInterval - 30)
   } else if (kind === 'BULLET_SPEED') {

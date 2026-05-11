@@ -60,7 +60,9 @@ function renderStars(ctx: CanvasRenderingContext2D, stars: Star[]): void {
 }
 
 function generateOptions(stage: number, weaponLevel: number): [PowerUpOption, PowerUpOption] {
-  const left: PowerUpOption = { kind: 'HP', label: 'HP +1', sub: '残機を1回復' }
+  const left: PowerUpOption = stage >= 5 
+    ? { kind: 'HP_2', label: 'HP +2', sub: '残機を2回復' }
+    : { kind: 'HP', label: 'HP +1', sub: '残機を1回復' }
   const candidates: PowerUpOption[] = [
     { kind: 'FIRE_RATE', label: '連射強化', sub: '発射間隔 -30ms' },
     { kind: 'BULLET_SPEED', label: '弾速強化', sub: '弾速 +20%' },
