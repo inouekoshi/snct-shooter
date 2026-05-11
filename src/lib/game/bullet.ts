@@ -9,12 +9,12 @@ export interface Bullet {
   isBoss: boolean
 }
 
-export function createPlayerBullet(x: number, y: number, speed: number): Bullet {
+export function createPlayerBullet(x: number, y: number, vx: number, vy: number): Bullet {
   return {
     x,
     y,
-    vx: 0,
-    vy: -speed,
+    vx,
+    vy,
     radius: 4,
     damage: 10,
     isEnemy: false,

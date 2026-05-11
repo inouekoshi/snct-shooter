@@ -81,6 +81,8 @@ export function applyUpgrade(player: Player, kind: PowerUpKind): void {
     player.fireInterval = Math.max(80, player.fireInterval - 30)
   } else if (kind === 'BULLET_SPEED') {
     player.bulletSpeed = Math.min(1080, player.bulletSpeed + 120)
+  } else if (kind === 'WEAPON_UPGRADE') {
+    player.weaponLevel = Math.min(3, player.weaponLevel + 1)
   }
 }
 

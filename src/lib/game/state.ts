@@ -1,4 +1,4 @@
-export type PowerUpKind = 'HP' | 'FIRE_RATE' | 'BULLET_SPEED'
+export type PowerUpKind = 'HP' | 'FIRE_RATE' | 'BULLET_SPEED' | 'WEAPON_UPGRADE'
 
 export interface PowerUpOption {
   kind: PowerUpKind

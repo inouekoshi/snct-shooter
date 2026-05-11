@@ -214,7 +214,23 @@ export function createGameEngine(
       const stage = (state as { stage: number }).stage
 
       if (canFire(player)) {
-        bullets.push(createPlayerBullet(player.x, player.y - 15, player.bulletSpeed))
+        const speed = player.bulletSpeed
+        const y = player.y - 15
+        
+        if (player.weaponLevel === 1) {
+          bullets.push(createPlayerBullet(player.x, y, 0, -speed))
+        } else if (player.weaponLevel === 2) {
+          bullets.push(createPlayerBullet(player.x - 8, y, 0, -speed))
+          bullets.push(createPlayerBullet(player.x + 8, y, 0, -speed))
+        } else {
+          const angle = 15 * Math.PI / 180
+          const vx = speed * Math.sin(angle)
+          const vy = speed * Math.cos(angle)
+          bullets.push(createPlayerBullet(player.x, y, 0, -speed))
+          bullets.push(createPlayerBullet(player.x, y, -vx, -vy))
+          bullets.push(createPlayerBullet(player.x, y, vx, -vy))
+        }
+        
         resetFireTimer(player)
       }
 
