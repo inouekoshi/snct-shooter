@@ -341,7 +341,7 @@ export function createGameEngine(
       const elapsed = state.elapsed + delta
       if (elapsed >= STAGE_CLEAR_DURATION) {
         hasTap = false
-        if (state.stage >= 10) {
+        if (state.stage >= 8) {
           setState({ type: 'GAME_CLEAR', score: score.total, stage: state.stage })
         } else {
           powerUpCanAcceptTap = !touch.active
