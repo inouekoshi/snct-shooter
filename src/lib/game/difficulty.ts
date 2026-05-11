@@ -49,7 +49,7 @@ export function getDifficulty(stage: number): DifficultyParams {
     attackEnemyFireInterval: lerp(2000, 400, t),
     attackEnemySpawnRatio: attackRatio,
     bossScoreThreshold: bossThreshold,
-    bossHp: 150 + (effectiveStage - 1) * 150 + Math.pow(effectiveStage - 1, 2) * 50,
+    bossHp: 150 + (effectiveStage - 1) * 150,
     bossSpeed: Math.min(40 + (effectiveStage - 1) * 15, 150),
     bossParams: {
       interval1: lerp(800, 300, t),

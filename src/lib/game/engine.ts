@@ -130,7 +130,6 @@ export function createGameEngine(
   let hasTap = false
   let healSpawnTimer = 0
   let powerUpCanAcceptTap = false
-  let bombFlashTimer = 0
 
   function notify(): void {
     onStateChange(state, score)
@@ -172,9 +171,6 @@ export function createGameEngine(
 
   function update(delta: number): void {
     updateStars(stars, delta)
-    if (bombFlashTimer > 0) {
-      bombFlashTimer = Math.max(0, bombFlashTimer - delta)
-    }
 
     if (prevTouchActive && !touch.active) {
       hasTap = true
@@ -329,8 +325,7 @@ export function createGameEngine(
           if (!b.isEnemy) continue
           if (circlesOverlap(b.x, b.y, b.radius, player.x, player.y, PLAYER_RADIUS)) {
             hitPlayer(player)
-            bullets = bullets.filter((x) => !x.isEnemy) // ボム効果: 敵弾一掃
-            bombFlashTimer = 150
+            bullets = bullets.filter((x) => x !== b)
             if (player.lives <= 0) {
               triggerGameOver(stage)
               return
@@ -344,8 +339,6 @@ export function createGameEngine(
           if (circlesOverlap(e.x, e.y, e.radius, player.x, player.y, PLAYER_RADIUS)) {
             hitPlayer(player)
             enemies = enemies.filter((x) => x !== e)
-            bullets = bullets.filter((x) => !x.isEnemy) // ボム効果: 敵弾一掃
-            bombFlashTimer = 150
             if (player.lives <= 0) {
               triggerGameOver(stage)
               return
@@ -395,12 +388,6 @@ export function createGameEngine(
       renderEnemies(ctx, enemies)
       renderBullets(ctx, bullets)
       renderPlayer(ctx, player)
-    }
-
-    if (bombFlashTimer > 0) {
-      const alpha = bombFlashTimer / 150
-      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
     }
 
     if (state.type === 'BOSS_APPEARING') {
