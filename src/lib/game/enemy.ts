@@ -17,6 +17,7 @@ export interface Enemy {
   score: number
   vx: number
   movePhase: number
+  bossParams?: DifficultyParams['bossParams']
 }
 
 const PLAYER_BASE_Y = 760
@@ -89,12 +90,13 @@ export function createBoss(stage: number, diff: DifficultyParams): Enemy {
     hp: diff.bossHp,
     maxHp: diff.bossHp,
     speed: diff.bossSpeed,
-    fireTimer: 800,
-    fireInterval: 800,
-    bulletSpeed: 250,
+    fireTimer: diff.bossParams.interval1,
+    fireInterval: diff.bossParams.interval1,
+    bulletSpeed: diff.bossParams.bulletSpeed1,
     score: 500,
     vx: 0,
     movePhase: 0,
+    bossParams: diff.bossParams,
   }
 }
 
@@ -155,24 +157,25 @@ function updateBoss(boss: Enemy, delta: number, playerX: number, bullets: Bullet
   boss.fireTimer -= delta
   if (boss.fireTimer <= 0) {
     const hpRatio = boss.hp / boss.maxHp
+    const bp = boss.bossParams!
     if (hpRatio > 0.5) {
-      boss.fireTimer = 800
+      boss.fireTimer = bp.interval1
       const tx = playerX - boss.x
       const ty = PLAYER_BASE_Y - boss.y
       const dist = Math.sqrt(tx * tx + ty * ty) || 1
-      bullets.push(createEnemyBullet(boss.x, boss.y, (tx / dist) * 250, (ty / dist) * 250, true))
+      bullets.push(createEnemyBullet(boss.x, boss.y, (tx / dist) * bp.bulletSpeed1, (ty / dist) * bp.bulletSpeed1, true))
     } else if (hpRatio > 0.25) {
-      boss.fireTimer = 1200
+      boss.fireTimer = bp.interval2
       for (const offset of [-40, -20, 0, 20, 40]) {
         const angle = Math.PI / 2 + (offset * Math.PI) / 180
-        bullets.push(createEnemyBullet(boss.x, boss.y, Math.cos(angle) * 300, Math.sin(angle) * 300, true))
+        bullets.push(createEnemyBullet(boss.x, boss.y, Math.cos(angle) * bp.bulletSpeed2, Math.sin(angle) * bp.bulletSpeed2, true))
       }
     } else {
-      boss.fireTimer = 500
+      boss.fireTimer = bp.interval3
       boss.movePhase = (boss.movePhase + Math.PI / 6) % (Math.PI * 2)
       for (let i = 0; i < 3; i++) {
         const angle = boss.movePhase + (i * Math.PI * 2) / 3
-        bullets.push(createEnemyBullet(boss.x, boss.y, Math.cos(angle) * 320, Math.sin(angle) * 320, true))
+        bullets.push(createEnemyBullet(boss.x, boss.y, Math.cos(angle) * bp.bulletSpeed3, Math.sin(angle) * bp.bulletSpeed3, true))
       }
     }
   }

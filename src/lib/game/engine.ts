@@ -191,7 +191,7 @@ export function createGameEngine(
     }
 
     if (state.type === 'PAUSED') return
-    if (state.type === 'IDLE' || state.type === 'GAME_OVER') return
+    if (state.type === 'IDLE' || state.type === 'GAME_OVER' || state.type === 'GAME_CLEAR') return
 
     if (state.type === 'POWER_UP_SELECT') {
       if (!powerUpCanAcceptTap && !touch.active) {
@@ -341,8 +341,12 @@ export function createGameEngine(
       const elapsed = state.elapsed + delta
       if (elapsed >= STAGE_CLEAR_DURATION) {
         hasTap = false
-        powerUpCanAcceptTap = !touch.active
-        setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generateOptions() })
+        if (state.stage >= 10) {
+          setState({ type: 'GAME_CLEAR', score: score.total, stage: state.stage })
+        } else {
+          powerUpCanAcceptTap = !touch.active
+          setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generateOptions() })
+        }
       } else {
         setState({ ...state, elapsed })
       }
@@ -357,7 +361,7 @@ export function createGameEngine(
 
     renderStars(ctx, stars)
 
-    if (state.type !== 'IDLE' && state.type !== 'GAME_OVER') {
+    if (state.type !== 'IDLE' && state.type !== 'GAME_OVER' && state.type !== 'GAME_CLEAR') {
       renderEnemies(ctx, enemies)
       renderBullets(ctx, bullets)
       renderPlayer(ctx, player)

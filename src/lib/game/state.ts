@@ -16,3 +16,4 @@ export type GameState =
   | { type: 'PAUSED'; resumeTo: GameState }
   | { type: 'COUNTDOWN'; resumeTo: GameState; remaining: number }
   | { type: 'GAME_OVER'; score: number; stage: number }
+  | { type: 'GAME_CLEAR'; score: number; stage: number }

@@ -10,9 +10,10 @@ import HUD from './HUD'
 
 interface Props {
   onGameOver: (score: number, stage: number, highScore: number) => void
+  onGameClear: (score: number, highScore: number) => void
 }
 
-export default function GameCanvas({ onGameOver }: Props) {
+export default function GameCanvas({ onGameOver, onGameClear }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<ReturnType<typeof createGameEngine> | null>(null)
   const [hudData, setHudData] = useState({ score: 0, lives: 3, stage: 1 })
@@ -43,6 +44,10 @@ export default function GameCanvas({ onGameOver }: Props) {
 
         if (state.type === 'GAME_OVER') {
           onGameOver(state.score, state.stage, score.highScore)
+          return
+        }
+        if (state.type === 'GAME_CLEAR') {
+          onGameClear(state.score, score.highScore)
           return
         }
 
