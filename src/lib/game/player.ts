@@ -18,6 +18,7 @@ export interface Player {
   fireTimer: number
   fireInterval: number
   bulletSpeed: number
+  weaponLevel: number
 }
 
 export function createPlayer(): Player {
@@ -29,6 +30,7 @@ export function createPlayer(): Player {
     fireTimer: 0,
     fireInterval: 200,
     bulletSpeed: 600,
+    weaponLevel: 1,
   }
 }
 
