@@ -1,15 +1,18 @@
-# Casual Games - 暇つぶしシューティングゲーム
+# SNCT Shooter - 暇つぶしシューティングゲーム
 
 スマートフォンブラウザでサクッと遊べる、軽量・シンプルな縦スクロールシューティングゲームです。Chromeの恐竜ゲームのように、隙間時間にすぐプレイできることを目的としています。
+
+高専祭などのイベントで多人数が遊ぶことを想定し、オンラインリーダーボードを備えています。
 
 ## 🎮 プロジェクト概要
 
 - **プラットフォーム**: スマートフォンブラウザ (iOS Safari / Android Chrome)
-- **特徴**: 
+- **特徴**:
   - 全8ステージ構成のやり応えのあるステージ制
   - 片手で操作可能なシンプル設計（ドラッグ・スワイプのみで移動、弾は自動連射）
-  - ツイン弾や3-Wayに進化する「武器強化」システムを搭載
+  - ツイン弾や3-Wayに進化する「武器強化」システム
   - PWA（Progressive Web App）対応でオフラインでもプレイ可能
+  - オンラインリーダーボード（プレイヤー名を入れてスコア投稿、トップ20表示）
 - **画面表示**: Portrait（縦向き）固定。デバイスのセーフエリアも考慮した設計。
 
 詳細は仕様書 [docs/spec.md](docs/spec.md) を参照してください。
@@ -19,10 +22,11 @@
 - **フレームワーク**: Next.js 14 (App Router)
 - **言語**: TypeScript
 - **描画エンジン**: Canvas API + requestAnimationFrame (delta-time ベース制御)
-- **操作制御**: Touch Events API 
-- **データ保存**: localStorage (スコア保存等)
+- **操作制御**: Touch Events API
+- **データ保存（ローカル）**: localStorage（ハイスコア・プレイヤー名）
+- **データ保存（オンライン）**: Firebase Firestore（リーダーボード）+ Firebase Admin SDK（API Routes 経由のみアクセス）
 - **PWA**: Serwist
-- **ホスティング**: Vercel
+- **ホスティング**: Vercel（main ブランチ自動デプロイ）
 
 さらに詳しい設計やディレクトリ構成については、アーキテクチャドキュメント [docs/architecture.md](docs/architecture.md) をご覧ください。
 
@@ -37,14 +41,19 @@
 - 弾は自動的に連射されます。タップ等の操作は不要です。
 - 敵の弾や敵本体に当たらないように避けながら、敵を倒してステージを進めましょう。
 
+### ランキング機能
+- スタート画面の `RANKING` ボタンからトップ20を表示できます。
+- ゲームオーバー / クリア時に「スコアを投稿」→ 名前を入力すると、ランキングに登録されます。
+- 入力した名前は次回プレイ時に自動で復元されます。
+
 ## 🚀 ローカルでの開発と起動
 
 開発環境をセットアップする手順です。
 
 1. **リポジトリのクローン**
    ```bash
-   git clone https://github.com/inouekoshi/Casual-games.git
-   cd Casual-games
+   git clone https://github.com/inouekoshi/snct-shooter.git
+   cd snct-shooter
    ```
 
 2. **依存関係のインストール**
@@ -52,7 +61,15 @@
    npm install
    ```
 
-3. **開発サーバーの起動**
+3. **Firebase の環境変数を設定**
+
+   `.env.local` を作成し、Firebase Admin SDK のサービスアカウントキーを1行 JSON で設定します。
+   ```
+   FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account","project_id":"...",...}
+   ```
+   ※ ランキング機能を使わない場合は省略可能（ローカルプレイのみで動作）。
+
+4. **開発サーバーの起動**
    ```bash
    npm run dev
    ```
@@ -62,9 +79,11 @@
 
 本プロジェクトは **Vercel** へのデプロイを前提として構成されています。
 
-1. GitHubリポジトリをVercelにインポートします。
-2. デフォルトのNext.js設定（Build Command: `next build`, Output Directory: `.next`）でデプロイが完了します。
-3. `main` ブランチにプッシュまたはマージされると、自動的に本番環境にデプロイされます。
+1. GitHubリポジトリを Vercel にインポート（プロジェクト名: `snct-shooter`）
+2. Vercel の Environment Variables に `FIREBASE_SERVICE_ACCOUNT_KEY` を追加（Production / Preview / Development の3環境すべて）
+3. `main` ブランチにプッシュ・マージで本番環境に自動デプロイされます
+
+本番URL: https://snct-shooter-koshiinoues-projects.vercel.app
 
 ## 🤝 コミュニティとコントリビューション
 
