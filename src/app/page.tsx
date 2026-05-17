@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { loadHighScore } from '@/lib/game/score'
 import RotatePrompt from '@/components/RotatePrompt'
+import Leaderboard from '@/components/Leaderboard'
 
 export default function StartPage() {
   const router = useRouter()
   const [highScore, setHighScore] = useState(0)
   const [scale, setScale] = useState(1)
+  const [showRanking, setShowRanking] = useState(false)
 
   useEffect(() => {
     setHighScore(loadHighScore())
@@ -56,25 +58,42 @@ export default function StartPage() {
           </div>
         )}
 
-        <button
-          onClick={() => router.push('/game')}
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            padding: '16px 48px',
-            background: '#FFFFFF',
-            color: '#000000',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '20px',
-            fontWeight: 'bold',
-            fontFamily: 'monospace',
-            cursor: 'pointer',
-            letterSpacing: '2px',
-          }}
-        >
-          START
-        </button>
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+          <button
+            onClick={() => router.push('/game')}
+            style={{
+              padding: '16px 48px',
+              background: '#FFFFFF',
+              color: '#000000',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '20px',
+              fontWeight: 'bold',
+              fontFamily: 'monospace',
+              cursor: 'pointer',
+              letterSpacing: '2px',
+            }}
+          >
+            START
+          </button>
+          <button
+            onClick={() => setShowRanking(true)}
+            style={{
+              padding: '10px 36px',
+              background: 'transparent',
+              color: '#FFFFFF',
+              border: '2px solid #FFFFFF',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              fontFamily: 'monospace',
+              cursor: 'pointer',
+              letterSpacing: '2px',
+            }}
+          >
+            RANKING
+          </button>
+        </div>
 
         <p
           style={{
@@ -88,6 +107,10 @@ export default function StartPage() {
         >
           iPhoneは「共有」→「ホーム画面に追加」でオフラインでも遊べます
         </p>
+
+        {showRanking && (
+          <Leaderboard onClose={() => setShowRanking(false)} />
+        )}
       </div>
     </>
   )
