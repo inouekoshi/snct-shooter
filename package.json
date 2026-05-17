@@ -1,5 +1,5 @@
 {
-  "name": "casual-games",
+  "name": "snct-shooter",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -14,15 +14,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/inouekoshi/Casual-games.git"
+    "url": "git+https://github.com/inouekoshi/snct-shooter.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/inouekoshi/Casual-games/issues"
+    "url": "https://github.com/inouekoshi/snct-shooter/issues"
   },
-  "homepage": "https://github.com/inouekoshi/Casual-games#readme",
+  "homepage": "https://github.com/inouekoshi/snct-shooter#readme",
   "dependencies": {
     "@serwist/next": "^9.5.11",
     "@tailwindcss/postcss": "^4.2.4",
