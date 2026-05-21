@@ -4,6 +4,11 @@
 
 高専祭などのイベントで多人数が遊ぶことを想定し、オンラインリーダーボードを備えています。
 
+> **🌐 動作確認用URL（Vercel）**
+> - **本番環境 (`main` ブランチ):** https://snct-shooter-koshiinoues-projects.vercel.app
+> - **開発環境 (`dev` ブランチ):** https://snct-shooter-git-dev-koshiinoues-projects.vercel.app
+>   ※ 開発環境のURLは固定です。`dev` ブランチに変更がプッシュされると自動で最新状態に更新されます。ブックマークにはこちらをご利用ください。
+
 ## 🎮 プロジェクト概要
 
 - **プラットフォーム**: スマートフォンブラウザ (iOS Safari / Android Chrome)
@@ -88,7 +93,12 @@
   - `dev` ブランチにプッシュすると、Vercelが自動的にプレビュー環境としてビルドし、ブランチ専用のURL（例: `https://snct-shooter-git-dev-koshiinoues-projects.vercel.app`）を生成します。
   - ローカル開発サーバー（`localhost`）は極力使用せず、このVercelのプレビュー環境にて実際の動作確認やテストを行います。
 
-※ 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` は Vercel ダッシュボードで Production / Preview / Development の3環境すべてに設定されています。
+### データベースの環境分離
+テストデータが本番のランキングに混入するのを防ぐため、Firestoreの参照先コレクションを自動で切り替えています。
+- Production環境: `scores` コレクションを使用
+- Preview/Development環境: `scores_dev` コレクションを使用
+
+※ 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` は Vercel ダッシュボードで Production / Preview / Development の3環境すべてに共通で設定されています。
 
 ## 🤝 コミュニティとコントリビューション
 
