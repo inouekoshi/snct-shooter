@@ -135,10 +135,18 @@ Firebase Admin SDK のサービスアカウントキーは `FIREBASE_SERVICE_ACC
 ### 4.7 UI コンポーネント
 `src/components/Leaderboard.tsx` は固定の論理解像度（390×844）上にオーバーレイ表示するコンポーネント。ホーム画面の RANKING ボタンとゲームオーバー／クリア画面の「ランキングを見る」ボタンから呼び出される。自分のスコアは黄色（`#FFFF00`）でハイライトされる。
 
-## 5. デプロイ構成
+## 5. デプロイ・ブランチ構成
 
-- **Vercel** にプッシュ → 自動デプロイ
-- `main` ブランチ = 本番環境
-- 本番URL: `https://snct-shooter-koshiinoues-projects.vercel.app`
-- 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` は Vercel ダッシュボードで Production / Preview / Development の3環境すべてに設定
-- API Routes は Vercel Functions（Fluid Compute）として実行される
+本プロジェクトは Vercel と GitHub を連携し、ブランチベースの自動デプロイを活用して環境を分離しています。
+
+### 5.1 ブランチ戦略
+- **`main` ブランチ (本番環境 / Production)**
+  - プロダクション用の安定版。ユーザーが実際にプレイする環境。
+  - 本番URL: `https://snct-shooter-koshiinoues-projects.vercel.app`
+- **`dev` ブランチ (プレビュー環境 / Preview)**
+  - 開発用ブランチ。ローカル環境 (`localhost`) は極力使用せず、`dev` ブランチへのプッシュ時に自動生成される Vercel Preview URL にて動作確認を行う運用としています。
+  - プレビューURL例: `https://snct-shooter-git-dev-koshiinoues-projects.vercel.app`
+
+### 5.2 環境変数・インフラ
+- 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` は Vercel ダッシュボードで Production / Preview / Development の3環境すべてに設定されています。
+- Next.js の API Routes (`/api/scores`) は Vercel Functions (Fluid Compute) として自動的にプロビジョニングされ、サーバーレス環境で実行されます。

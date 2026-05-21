@@ -75,15 +75,20 @@
    ```
    ブラウザで `http://localhost:3000` にアクセスして動作を確認します。スマートフォンからの確認は、同一ネットワーク上のローカルIPアドレスからアクセスしてテストしてください。
 
-## 📦 デプロイについて
+## 📦 デプロイとブランチ戦略について
 
-本プロジェクトは **Vercel** へのデプロイを前提として構成されています。
+本プロジェクトは **Vercel** へのデプロイを前提としており、GitHubとの連携による自動デプロイ機能を利用して、本番環境と開発環境を分離しています。
 
-1. GitHubリポジトリを Vercel にインポート（プロジェクト名: `snct-shooter`）
-2. Vercel の Environment Variables に `FIREBASE_SERVICE_ACCOUNT_KEY` を追加（Production / Preview / Development の3環境すべて）
-3. `main` ブランチにプッシュ・マージで本番環境に自動デプロイされます
+### ブランチと環境の対応
+- **`main` ブランチ (本番環境 / Production)**
+  - `main` ブランチへのプッシュ、またはプルリクエストのマージによって自動デプロイされます。
+  - 本番URL: https://snct-shooter-koshiinoues-projects.vercel.app
+- **`dev` ブランチ (プレビュー・開発環境 / Preview)**
+  - 日々の開発作業は `dev` ブランチ（または派生ブランチ）で行います。
+  - `dev` ブランチにプッシュすると、Vercelが自動的にプレビュー環境としてビルドし、ブランチ専用のURL（例: `https://snct-shooter-git-dev-koshiinoues-projects.vercel.app`）を生成します。
+  - ローカル開発サーバー（`localhost`）は極力使用せず、このVercelのプレビュー環境にて実際の動作確認やテストを行います。
 
-本番URL: https://snct-shooter-koshiinoues-projects.vercel.app
+※ 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` は Vercel ダッシュボードで Production / Preview / Development の3環境すべてに設定されています。
 
 ## 🤝 コミュニティとコントリビューション
 
