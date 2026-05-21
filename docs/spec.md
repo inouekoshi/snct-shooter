@@ -279,7 +279,9 @@ GAME_OVER
 - Firestore セキュリティルールはすべて拒否に設定し、サーバーサイドの Firebase Admin SDK のみが読み書きする
 
 #### データ構造
-Firestore コレクション `scores`:
+Firestore コレクション（環境ごとに分離）:
+- 本番環境 (Production): `scores`
+- 開発・プレビュー環境 (Preview/Local): `scores_dev`
 
 | フィールド | 型 | 説明 |
 |---|---|---|
