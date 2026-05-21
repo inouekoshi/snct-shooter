@@ -19,9 +19,12 @@ export interface LeaderboardEntry {
   createdAt?: number
 }
 
+// 環境に応じてコレクションを切り替える (本番は 'scores', 開発・プレビューは 'scores_dev')
+const COLLECTION_NAME = process.env.VERCEL_ENV === 'production' ? 'scores' : 'scores_dev'
+
 export async function getTopScores(n = 20): Promise<LeaderboardEntry[]> {
   const db = initFirebase()
-  const snap = await db.collection('scores').orderBy('score', 'desc').limit(n).get()
+  const snap = await db.collection(COLLECTION_NAME).orderBy('score', 'desc').limit(n).get()
   return snap.docs.map(doc => {
     const d = doc.data()
     const ts = d.createdAt instanceof Timestamp ? d.createdAt.toMillis() : undefined
@@ -31,7 +34,7 @@ export async function getTopScores(n = 20): Promise<LeaderboardEntry[]> {
 
 export async function addScore(entry: LeaderboardEntry): Promise<{ rank: number }> {
   const db = initFirebase()
-  await db.collection('scores').add({
+  await db.collection(COLLECTION_NAME).add({
     name: entry.name,
     score: entry.score,
     stage: entry.stage,
