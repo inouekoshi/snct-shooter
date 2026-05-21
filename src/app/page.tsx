@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import { loadHighScore } from '@/lib/game/score'
 import RotatePrompt from '@/components/RotatePrompt'
 import Leaderboard from '@/components/Leaderboard'
+import StatsModal from '@/components/StatsModal'
 
 export default function StartPage() {
   const router = useRouter()
   const [highScore, setHighScore] = useState(0)
   const [scale, setScale] = useState(1)
   const [showRanking, setShowRanking] = useState(false)
+  const [showStats, setShowStats] = useState(false)
 
   useEffect(() => {
     setHighScore(loadHighScore())
@@ -93,6 +95,23 @@ export default function StartPage() {
           >
             RANKING
           </button>
+          <button
+            onClick={() => setShowStats(true)}
+            style={{
+              padding: '10px 36px',
+              background: 'transparent',
+              color: '#AAAAAA',
+              border: '2px solid #555555',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              fontFamily: 'monospace',
+              cursor: 'pointer',
+              letterSpacing: '2px',
+            }}
+          >
+            STATS
+          </button>
         </div>
 
         <p
@@ -110,6 +129,9 @@ export default function StartPage() {
 
         {showRanking && (
           <Leaderboard onClose={() => setShowRanking(false)} />
+        )}
+        {showStats && (
+          <StatsModal onClose={() => setShowStats(false)} />
         )}
       </div>
     </>

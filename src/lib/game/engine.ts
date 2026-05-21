@@ -15,6 +15,7 @@ import {
 import { circlesOverlap } from './collision'
 import { getDifficulty } from './difficulty'
 import { createScoreState, saveHighScore, type ScoreState } from './score'
+import { createKillCounts, saveGameRecord, type KillCounts } from './stats'
 
 const STAR_COUNT = 80
 const BOSS_APPEARING_DURATION = 1500
@@ -121,6 +122,7 @@ export function createGameEngine(
   let enemies: Enemy[] = []
   let bullets: Bullet[] = []
   let stageScore = 0
+  let killCounts: KillCounts = createKillCounts()
   let enemySpawnTimer = 0
   let normalsSinceLastAttack = 0
   let animId = 0
@@ -157,6 +159,7 @@ export function createGameEngine(
       score.highScore = score.total
       saveHighScore(score.highScore)
     }
+    saveGameRecord({ score: score.total, stage, playedAt: Date.now(), kills: { ...killCounts } })
     setState({ type: 'GAME_OVER', score: score.total, stage })
   }
 
@@ -292,6 +295,7 @@ export function createGameEngine(
       for (const e of deadEnemies) {
         score.total += e.score
         stageScore += e.score
+        killCounts[e.kind]++
         if (e.kind === 'heal') {
           player.lives += 1
         }
@@ -300,6 +304,9 @@ export function createGameEngine(
           if (score.total > score.highScore) {
             score.highScore = score.total
             saveHighScore(score.highScore)
+          }
+          if (stage >= 8) {
+            saveGameRecord({ score: score.total, stage, playedAt: Date.now(), kills: { ...killCounts } })
           }
           setState({ type: 'STAGE_CLEAR', stage, elapsed: 0 })
           enemies = []
@@ -446,6 +453,7 @@ export function createGameEngine(
       hasTap = false
       player = createPlayer()
       score = createScoreState(score.highScore)
+      killCounts = createKillCounts()
       startStage(1)
       running = true
       prevTime = 0
