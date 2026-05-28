@@ -102,14 +102,8 @@ export default function GameCanvas({ mode, onGameOver, onGameClear }: Props) {
         ref={canvasRef}
         style={{ display: 'block', touchAction: 'none', userSelect: 'none' }}
       />
-      
-      {mode === 'EASY' && (
-        <div style={{ position: 'absolute', top: '8px', right: '16px', color: '#00CC88', fontSize: '14px', fontWeight: 'bold', fontFamily: 'monospace' }}>
-          EASY MODE
-        </div>
-      )}
 
-      <HUD score={hudData.score} lives={hudData.lives} stage={hudData.stage} />
+      <HUD score={hudData.score} lives={hudData.lives} stage={hudData.stage} mode={mode} />
 
       {showPauseButton && (
         <button

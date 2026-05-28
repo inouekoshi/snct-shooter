@@ -4,9 +4,10 @@ interface HUDProps {
   score: number
   lives: number
   stage: number
+  mode?: import('@/lib/game/difficulty').DifficultyMode
 }
 
-export default function HUD({ score, lives, stage }: HUDProps) {
+export default function HUD({ score, lives, stage, mode }: HUDProps) {
   return (
     <div
       style={{
@@ -34,6 +35,9 @@ export default function HUD({ score, lives, stage }: HUDProps) {
       <div style={{ textAlign: 'center' }}>
         <div>STAGE</div>
         <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{stage}</div>
+        {mode === 'EASY' && (
+          <div style={{ color: '#00CC88', fontSize: '12px', marginTop: '4px', textShadow: 'none' }}>EASY MODE</div>
+        )}
       </div>
       <div style={{ textAlign: 'right' }}>
         <div>LIVES</div>
