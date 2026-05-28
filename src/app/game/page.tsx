@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import type { DifficultyMode } from '@/lib/game/difficulty'
 import dynamic from 'next/dynamic'
 import RotatePrompt from '@/components/RotatePrompt'
 import Leaderboard from '@/components/Leaderboard'
@@ -49,6 +50,9 @@ const BTN_OUTLINE: React.CSSProperties = {
 
 export default function GamePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const gameMode = (searchParams.get('mode')?.toUpperCase() === 'EASY' ? 'EASY' : 'NORMAL') as DifficultyMode
+
   const [gameOver, setGameOver] = useState<GameOverData | null>(null)
   const [gameClear, setGameClear] = useState<GameClearData | null>(null)
   const [scale, setScale] = useState(1)
@@ -116,6 +120,14 @@ export default function GamePage() {
   }
 
   function renderSubmitFlow(score: number, stage: number) {
+    if (gameMode === 'EASY') {
+      return (
+        <div style={{ textAlign: 'center', marginTop: '8px' }}>
+          <p style={{ fontSize: '12px', color: '#00CC88' }}>※EASYモードはランキング登録対象外です</p>
+        </div>
+      )
+    }
+
     if (submitState === 'idle') {
       return (
         <button
@@ -204,7 +216,7 @@ export default function GamePage() {
     <>
       <RotatePrompt />
       <div style={{ position: 'relative', width: '390px', height: '844px', transform: `scale(${scale})`, transformOrigin: 'top center' }}>
-        {!gameOver && !gameClear && <GameCanvas onGameOver={handleGameOver} onGameClear={handleGameClear} />}
+        {!gameOver && !gameClear && <GameCanvas mode={gameMode} onGameOver={handleGameOver} onGameClear={handleGameClear} />}
 
         {gameOver && (
           <div

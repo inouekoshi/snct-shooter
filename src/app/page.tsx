@@ -61,23 +61,46 @@ export default function StartPage() {
         )}
 
         <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
-          <button
-            onClick={() => router.push('/game')}
-            style={{
-              padding: '16px 48px',
-              background: '#FFFFFF',
-              color: '#000000',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '20px',
-              fontWeight: 'bold',
-              fontFamily: 'monospace',
-              cursor: 'pointer',
-              letterSpacing: '2px',
-            }}
-          >
-            START
-          </button>
+          <div style={{ display: 'flex', gap: '16px', width: '100%', justifyContent: 'center' }}>
+            <button
+              onClick={() => router.push('/game?mode=easy')}
+              style={{
+                padding: '16px 20px',
+                background: '#222222',
+                color: '#00CC88',
+                border: '2px solid #00CC88',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                fontFamily: 'monospace',
+                cursor: 'pointer',
+                letterSpacing: '1px',
+                flex: 1,
+                maxWidth: '140px',
+              }}
+            >
+              EASY<br/><span style={{fontSize: '12px', color: '#888'}}>初心者向け</span>
+            </button>
+            <button
+              onClick={() => router.push('/game?mode=normal')}
+              style={{
+                padding: '16px 20px',
+                background: '#FFFFFF',
+                color: '#000000',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                fontFamily: 'monospace',
+                cursor: 'pointer',
+                letterSpacing: '1px',
+                flex: 1,
+                maxWidth: '140px',
+              }}
+            >
+              NORMAL<br/><span style={{fontSize: '12px', color: '#666'}}>標準難易度</span>
+            </button>
+          </div>
           <button
             onClick={() => setShowRanking(true)}
             style={{

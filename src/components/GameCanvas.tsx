@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createGameEngine } from '@/lib/game/engine'
+import type { DifficultyMode } from '@/lib/game/difficulty'
 import { registerTouchHandlers, createTouchBuffer } from '@/lib/game/touch'
 import { loadHighScore } from '@/lib/game/score'
 import type { GameState } from '@/lib/game/state'
@@ -9,11 +10,12 @@ import type { ScoreState } from '@/lib/game/score'
 import HUD from './HUD'
 
 interface Props {
+  mode: DifficultyMode
   onGameOver: (score: number, stage: number, highScore: number) => void
   onGameClear: (score: number, highScore: number) => void
 }
 
-export default function GameCanvas({ onGameOver, onGameClear }: Props) {
+export default function GameCanvas({ mode, onGameOver, onGameClear }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<ReturnType<typeof createGameEngine> | null>(null)
   const [hudData, setHudData] = useState({ score: 0, lives: 3, stage: 1 })
@@ -59,7 +61,8 @@ export default function GameCanvas({ onGameOver, onGameClear }: Props) {
           lives: engine.lives,
           stage: stageNum,
         })
-      }
+      },
+      mode
     )
 
     engine.score.highScore = initialHighScore
@@ -99,6 +102,13 @@ export default function GameCanvas({ onGameOver, onGameClear }: Props) {
         ref={canvasRef}
         style={{ display: 'block', touchAction: 'none', userSelect: 'none' }}
       />
+      
+      {mode === 'EASY' && (
+        <div style={{ position: 'absolute', top: '8px', right: '16px', color: '#00CC88', fontSize: '14px', fontWeight: 'bold', fontFamily: 'monospace' }}>
+          EASY MODE
+        </div>
+      )}
+
       <HUD score={hudData.score} lives={hudData.lives} stage={hudData.stage} />
 
       {showPauseButton && (

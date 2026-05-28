@@ -22,7 +22,9 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * Math.min(t, 1)
 }
 
-export function getDifficulty(stage: number): DifficultyParams {
+export type DifficultyMode = 'EASY' | 'NORMAL'
+
+export function getDifficulty(stage: number, mode: DifficultyMode = 'NORMAL'): DifficultyParams {
   const effectiveStage = stage + 2
   const t = Math.max(0, Math.min((effectiveStage - 1) / 9, 1))
 
@@ -41,7 +43,7 @@ export function getDifficulty(stage: number): DifficultyParams {
   }
   const bossThreshold = bossThresholdTable[effectiveStage] ?? (300 + (effectiveStage - 1) * 200)
 
-  return {
+  const params: DifficultyParams = {
     normalEnemySpeed: lerp(110, 300, t),
     normalEnemyInterval: lerp(900, 150, t),
     attackEnemySpeed: lerp(90, 200, t),
@@ -60,4 +62,22 @@ export function getDifficulty(stage: number): DifficultyParams {
       bulletSpeed3: lerp(320, 550, t),
     }
   }
+
+  if (mode === 'EASY') {
+    params.normalEnemySpeed *= 0.7
+    params.normalEnemyInterval *= 1.5
+    params.attackEnemySpeed *= 0.7
+    params.attackEnemyBulletSpeed *= 0.6
+    params.attackEnemyFireInterval *= 1.5
+    params.bossHp = Math.max(10, Math.floor(params.bossHp * 0.6))
+    params.bossSpeed *= 0.8
+    params.bossParams.interval1 *= 1.5
+    params.bossParams.interval2 *= 1.5
+    params.bossParams.interval3 *= 1.5
+    params.bossParams.bulletSpeed1 *= 0.6
+    params.bossParams.bulletSpeed2 *= 0.6
+    params.bossParams.bulletSpeed3 *= 0.6
+  }
+
+  return params
 }

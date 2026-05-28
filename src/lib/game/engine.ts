@@ -13,7 +13,7 @@ import {
   createPlayerBullet, updateBullets, removeOffscreenBullets, renderBullets, type Bullet,
 } from './bullet'
 import { circlesOverlap } from './collision'
-import { getDifficulty } from './difficulty'
+import { getDifficulty, type DifficultyMode } from './difficulty'
 import { createScoreState, saveHighScore, type ScoreState } from './score'
 import { createKillCounts, saveGameRecord, type KillCounts } from './stats'
 
@@ -111,7 +111,8 @@ export interface GameEngine {
 export function createGameEngine(
   canvas: HTMLCanvasElement,
   touch: TouchBuffer,
-  onStateChange: (state: GameState, score: ScoreState) => void
+  onStateChange: (state: GameState, score: ScoreState) => void,
+  mode: DifficultyMode = 'NORMAL'
 ): GameEngine {
   const ctx = canvas.getContext('2d')!
   const stars = createStars()
@@ -247,7 +248,7 @@ export function createGameEngine(
       }
 
       if (state.type === 'PLAYING') {
-        const diff = getDifficulty(stage)
+        const diff = getDifficulty(stage, mode)
         enemySpawnTimer -= delta
         if (enemySpawnTimer <= 0) {
           enemySpawnTimer = diff.normalEnemyInterval
@@ -317,7 +318,7 @@ export function createGameEngine(
       enemies = enemies.filter((e) => e.hp > 0)
 
       if (state.type === 'PLAYING') {
-        const diff = getDifficulty(stage)
+        const diff = getDifficulty(stage, mode)
         if (stageScore >= diff.bossScoreThreshold) {
           const bossEnemy = createBoss(stage, diff)
           enemies = []
