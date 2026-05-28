@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { DifficultyMode } from '@/lib/game/difficulty'
 import dynamic from 'next/dynamic'
@@ -48,7 +48,7 @@ const BTN_OUTLINE: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-export default function GamePage() {
+function GamePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const gameMode = (searchParams.get('mode')?.toUpperCase() === 'EASY' ? 'EASY' : 'NORMAL') as DifficultyMode
@@ -335,5 +335,13 @@ export default function GamePage() {
         )}
       </div>
     </>
+  )
+}
+
+export default function GamePage() {
+  return (
+    <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: '#000' }} />}>
+      <GamePageContent />
+    </Suspense>
   )
 }
