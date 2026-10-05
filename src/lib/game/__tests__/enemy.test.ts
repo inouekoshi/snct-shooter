@@ -6,6 +6,7 @@ import {
   createBoss,
   updateEnemies,
   removeOffscreenEnemies,
+  enemyColor,
 } from '../enemy'
 import { getDifficulty } from '../difficulty'
 import type { Bullet } from '../bullet'
@@ -118,5 +119,17 @@ describe('removeOffscreenEnemies', () => {
     a.y = 919
     b.y = 920
     expect(removeOffscreenEnemies([a, b])).toEqual([a])
+  })
+})
+
+describe('enemyColor', () => {
+  it('敵の種類ごとの色を返す', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    expect(enemyColor(createNormalEnemy(diff))).toBe('#FF4444')
+    expect(enemyColor(createAttackEnemy(diff))).toBe('#FF8800')
+    expect(enemyColor(createHealEnemy())).toBe('#00CC88')
+    expect(enemyColor(createBoss(1, diff))).toBe('#AA00FF')
+    vi.spyOn(Math, 'random').mockReturnValue(0.1)
+    expect(enemyColor(createAttackEnemy(diff))).toBe('#FFAA00')
   })
 })

@@ -185,6 +185,13 @@ export function removeOffscreenEnemies(enemies: Enemy[]): Enemy[] {
   return enemies.filter((e) => e.y < 920)
 }
 
+export function enemyColor(e: Enemy): string {
+  if (e.kind === 'normal') return '#FF4444'
+  if (e.kind === 'attack') return e.vx !== 0 ? '#FFAA00' : '#FF8800'
+  if (e.kind === 'heal') return '#00CC88'
+  return '#AA00FF'
+}
+
 export function renderEnemies(ctx: CanvasRenderingContext2D, enemies: Enemy[]): void {
   for (const e of enemies) {
     if (e.kind === 'normal') {
@@ -200,7 +207,7 @@ export function renderEnemies(ctx: CanvasRenderingContext2D, enemies: Enemy[]): 
 }
 
 function renderHealEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
-  ctx.fillStyle = '#00CC88'
+  ctx.fillStyle = enemyColor(e)
   ctx.beginPath()
   ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2)
   ctx.fill()
@@ -211,7 +218,7 @@ function renderHealEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
 
 function renderNormalEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const s = e.radius
-  ctx.fillStyle = '#FF4444'
+  ctx.fillStyle = enemyColor(e)
   ctx.beginPath()
   ctx.moveTo(e.x, e.y + s)
   ctx.lineTo(e.x - s, e.y - s)
@@ -222,7 +229,7 @@ function renderNormalEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
 
 function renderAttackEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const s = e.radius
-  ctx.fillStyle = e.vx !== 0 ? '#FFAA00' : '#FF8800'
+  ctx.fillStyle = enemyColor(e)
   ctx.beginPath()
   ctx.moveTo(e.x, e.y + s)
   ctx.lineTo(e.x - s, e.y - s)
@@ -233,7 +240,7 @@ function renderAttackEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
 
 function renderBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const r = e.radius
-  ctx.fillStyle = '#AA00FF'
+  ctx.fillStyle = enemyColor(e)
   ctx.beginPath()
   for (let i = 0; i < 6; i++) {
     const angle = (i * Math.PI) / 3 - Math.PI / 6

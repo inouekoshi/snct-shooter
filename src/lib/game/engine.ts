@@ -7,8 +7,13 @@ import {
 } from './player'
 import {
   createNormalEnemy, createAttackEnemy, createBoss, createHealEnemy,
-  updateEnemies, removeOffscreenEnemies, renderEnemies, type Enemy,
+  updateEnemies, removeOffscreenEnemies, renderEnemies, enemyColor, type Enemy,
 } from './enemy'
+import {
+  spawnExplosion, updateParticles, renderParticles, createScreenShake, triggerShake,
+  updateShake, shakeOffset, EXPLOSION_SMALL, EXPLOSION_MEDIUM, EXPLOSION_LARGE,
+  SHAKE_PLAYER_HIT, SHAKE_BOSS_DEFEAT, type Particle,
+} from './effects'
 import {
   createPlayerBullet, updateBullets, removeOffscreenBullets, renderBullets, type Bullet,
 } from './bullet'
@@ -20,6 +25,7 @@ import { createKillCounts, saveGameRecord, type KillCounts } from './stats'
 const STAR_COUNT = 80
 const BOSS_APPEARING_DURATION = 1500
 const STAGE_CLEAR_DURATION = 2000
+const STAGE_CLEAR_FADE_IN = 600
 const CANVAS_W = 390
 const CANVAS_H = 844
 const CANVAS_CX = CANVAS_W / 2
@@ -122,6 +128,9 @@ export function createGameEngine(
   let player = createPlayer()
   let enemies: Enemy[] = []
   let bullets: Bullet[] = []
+  let particles: Particle[] = []
+  const shake = createScreenShake()
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   let stageScore = 0
   let killCounts: KillCounts = createKillCounts()
   let enemySpawnTimer = 0
@@ -146,6 +155,7 @@ export function createGameEngine(
   }
 
   function startStage(stage: number): void {
+    particles = []
     stageScore = 0
     enemySpawnTimer = 0
     normalsSinceLastAttack = 0
@@ -153,6 +163,23 @@ export function createGameEngine(
     enemies = []
     bullets = []
     setState({ type: 'PLAYING', stage })
+  }
+
+  function explodeEnemy(e: Enemy): void {
+    if (e.kind === 'boss') {
+      spawnExplosion(particles, e.x, e.y, enemyColor(e), EXPLOSION_LARGE)
+      spawnExplosion(particles, e.x, e.y, '#FFFFFF', { ...EXPLOSION_MEDIUM, count: 30 })
+      triggerShake(shake, SHAKE_BOSS_DEFEAT.intensity, SHAKE_BOSS_DEFEAT.duration)
+    } else {
+      const options = e.kind === 'attack' ? EXPLOSION_MEDIUM : EXPLOSION_SMALL
+      spawnExplosion(particles, e.x, e.y, enemyColor(e), options)
+    }
+  }
+
+  function damagePlayer(): void {
+    hitPlayer(player)
+    spawnExplosion(particles, player.x, player.y, '#FFFFFF', EXPLOSION_SMALL)
+    triggerShake(shake, SHAKE_PLAYER_HIT.intensity, SHAKE_PLAYER_HIT.duration)
   }
 
   function triggerGameOver(stage: number): void {
@@ -205,6 +232,9 @@ export function createGameEngine(
 
     if (state.type === 'PAUSED') return
     if (state.type === 'IDLE' || state.type === 'GAME_OVER' || state.type === 'GAME_CLEAR') return
+
+    particles = updateParticles(particles, delta)
+    updateShake(shake, delta)
 
     if (state.type === 'POWER_UP_SELECT') {
       if (!powerUpCanAcceptTap && !touch.active) {
@@ -294,6 +324,7 @@ export function createGameEngine(
 
       const deadEnemies = enemies.filter((e) => e.hp <= 0)
       for (const e of deadEnemies) {
+        explodeEnemy(e)
         score.total += e.score
         stageScore += e.score
         killCounts[e.kind]++
@@ -334,7 +365,7 @@ export function createGameEngine(
         for (const b of bullets) {
           if (!b.isEnemy) continue
           if (circlesOverlap(b.x, b.y, b.radius, player.x, player.y, PLAYER_RADIUS)) {
-            hitPlayer(player)
+            damagePlayer()
             bullets = bullets.filter((x) => x !== b)
             if (player.lives <= 0) {
               triggerGameOver(stage)
@@ -347,7 +378,8 @@ export function createGameEngine(
         for (const e of enemies) {
           if (e.kind === 'boss') continue
           if (circlesOverlap(e.x, e.y, e.radius, player.x, player.y, PLAYER_RADIUS)) {
-            hitPlayer(player)
+            explodeEnemy(e)
+            damagePlayer()
             enemies = enemies.filter((x) => x !== e)
             if (player.lives <= 0) {
               triggerGameOver(stage)
@@ -392,13 +424,20 @@ export function createGameEngine(
     ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
 
+    const offset = reduceMotion ? { x: 0, y: 0 } : shakeOffset(shake)
+    ctx.save()
+    ctx.translate(offset.x, offset.y)
+
     renderStars(ctx, stars)
 
     if (state.type !== 'IDLE' && state.type !== 'GAME_OVER' && state.type !== 'GAME_CLEAR') {
       renderEnemies(ctx, enemies)
+      renderParticles(ctx, particles)
       renderBullets(ctx, bullets)
       renderPlayer(ctx, player)
     }
+
+    ctx.restore()
 
     if (state.type === 'BOSS_APPEARING') {
       ctx.fillStyle = 'rgba(170,0,255,0.3)'
@@ -410,7 +449,7 @@ export function createGameEngine(
     }
 
     if (state.type === 'STAGE_CLEAR') {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'
+      ctx.fillStyle = `rgba(0,0,0,${0.5 * Math.min(1, state.elapsed / STAGE_CLEAR_FADE_IN)})`
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
       ctx.fillStyle = '#FFFFFF'
       ctx.font = 'bold 42px sans-serif'
@@ -469,6 +508,7 @@ export function createGameEngine(
       cancelAnimationFrame(animId)
       enemies = []
       bullets = []
+      particles = []
     },
 
     pause() {
