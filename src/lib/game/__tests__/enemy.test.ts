@@ -22,7 +22,7 @@ describe('敵の生成', () => {
     expect(createNormalEnemy(diff).radius).toBe(15)
     expect(createAttackEnemy(diff).radius).toBe(20)
     expect(createHealEnemy().radius).toBe(14)
-    expect(createBoss(1, diff).radius).toBe(40)
+    expect(createBoss(diff).radius).toBe(40)
   })
 
   it('出現X座標は40〜350の範囲に収まる', () => {
@@ -33,7 +33,7 @@ describe('敵の生成', () => {
   })
 
   it('ボスは難易度のHPで生成される', () => {
-    const boss = createBoss(1, diff)
+    const boss = createBoss(diff)
     expect(boss.hp).toBe(diff.bossHp)
     expect(boss.maxHp).toBe(diff.bossHp)
   })
@@ -75,7 +75,7 @@ describe('updateEnemies', () => {
 
   describe('ボスの弾幕パターン', () => {
     const fireOnce = (hpRatio: number) => {
-      const boss = createBoss(1, diff)
+      const boss = createBoss(diff)
       boss.hp = boss.maxHp * hpRatio
       boss.fireTimer = 0
       const bullets: Bullet[] = []
@@ -104,7 +104,7 @@ describe('updateEnemies', () => {
   })
 
   it('ボスはy=120で降下を止め、x=50〜340の範囲で自機を追う', () => {
-    const boss = createBoss(1, diff)
+    const boss = createBoss(diff)
     boss.fireTimer = Infinity
     for (let i = 0; i < 500; i++) updateEnemies([boss], 16, 0, [])
     expect(boss.y).toBe(120)
@@ -128,7 +128,7 @@ describe('enemyColor', () => {
     expect(enemyColor(createNormalEnemy(diff))).toBe('#FF4444')
     expect(enemyColor(createAttackEnemy(diff))).toBe('#FF8800')
     expect(enemyColor(createHealEnemy())).toBe('#00CC88')
-    expect(enemyColor(createBoss(1, diff))).toBe('#AA00FF')
+    expect(enemyColor(createBoss(diff))).toBe('#AA00FF')
     vi.spyOn(Math, 'random').mockReturnValue(0.1)
     expect(enemyColor(createAttackEnemy(diff))).toBe('#FFAA00')
   })
@@ -159,13 +159,13 @@ describe('EXTRAモードの敵', () => {
   })
 
   it('最終ボスは専用の見た目・スコアで、弾幕が多い', () => {
-    const boss = createBoss(3, finalDiff)
+    const boss = createBoss(finalDiff)
     expect(boss.bossVariant).toBe('final')
     expect(boss.score).toBe(1000)
     expect(enemyColor(boss)).toBe('#FF2266')
 
     const fire = (ratio: number) => {
-      const b = createBoss(3, finalDiff)
+      const b = createBoss(finalDiff)
       b.hp = b.maxHp * ratio
       b.fireTimer = 0
       const bullets: Bullet[] = []
@@ -178,7 +178,7 @@ describe('EXTRAモードの敵', () => {
   })
 
   it('扇形弾幕は左右対称で真下が中心', () => {
-    const b = createBoss(1, extra)
+    const b = createBoss(extra)
     b.hp = b.maxHp * 0.5
     b.fireTimer = 0
     const bullets: Bullet[] = []

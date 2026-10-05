@@ -2,6 +2,7 @@ import type { TouchBuffer } from './touch'
 import type { PowerUpKind } from './state'
 import type { DifficultyMode } from './difficulty'
 import { createPlayerBullet, createPlayerLaser, type Bullet } from './bullet'
+import { CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_CENTER_X, PLAYER_START_Y } from './constants'
 
 export const PLAYER_RADIUS = 12
 export const MAX_WEAPON_LEVEL = 5
@@ -25,8 +26,8 @@ export interface Player {
 
 export function createPlayer(mode: DifficultyMode = 'NORMAL'): Player {
   const player: Player = {
-    x: 195,
-    y: 760,
+    x: CANVAS_CENTER_X,
+    y: PLAYER_START_Y,
     lives: 3,
     invincibleTimer: 0,
     fireTimer: 0,
@@ -81,8 +82,8 @@ export function firePlayerBullets(player: Player): Bullet[] {
 }
 
 export function resetPlayerPosition(player: Player): void {
-  player.x = 195
-  player.y = 760
+  player.x = CANVAS_CENTER_X
+  player.y = PLAYER_START_Y
 }
 
 export function updatePlayer(
@@ -91,8 +92,8 @@ export function updatePlayer(
   delta: number
 ): void {
   if (touch.active) {
-    const targetX = Math.max(PADDING, Math.min(390 - PADDING, touch.x))
-    const targetY = Math.max(PADDING, Math.min(844 - PADDING, touch.y))
+    const targetX = Math.max(PADDING, Math.min(CANVAS_WIDTH - PADDING, touch.x))
+    const targetY = Math.max(PADDING, Math.min(CANVAS_HEIGHT - PADDING, touch.y))
     const t = 1 - Math.exp(-FOLLOW_SPEED * delta / 1000)
     player.x += (targetX - player.x) * t
     player.y += (targetY - player.y) * t

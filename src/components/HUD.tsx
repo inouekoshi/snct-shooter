@@ -1,10 +1,12 @@
 'use client'
 
+import type { DifficultyMode } from '@/lib/game/difficulty'
+
 interface HUDProps {
   score: number
   lives: number
   stage: number
-  mode?: import('@/lib/game/difficulty').DifficultyMode
+  mode?: DifficultyMode
 }
 
 export default function HUD({ score, lives, stage, mode }: HUDProps) {

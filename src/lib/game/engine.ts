@@ -1,9 +1,9 @@
-import type { GameState, PowerUpOption } from './state'
+import type { GameState } from './state'
 import type { TouchBuffer } from './touch'
 import {
   createPlayer, updatePlayer, renderPlayer, canFire, resetFireTimer,
   hitPlayer, isPlayerInvincible, resetPlayerPosition, applyUpgrade,
-  firePlayerBullets, weaponName, PLAYER_RADIUS, MAX_WEAPON_LEVEL,
+  firePlayerBullets, PLAYER_RADIUS,
 } from './player'
 import {
   createNormalEnemy, createAttackEnemy, createBoss, createHealEnemy,
@@ -18,101 +18,20 @@ import {
   updateBullets, removeOffscreenBullets, renderBullets, type Bullet,
 } from './bullet'
 import { circlesOverlap, applyPlayerBulletHits } from './collision'
-import { getDifficulty, getStageCount, getStageClearBonus, type DifficultyMode } from './difficulty'
+import {
+  getDifficulty, getStageCount, getStageClearBonus, type BossVariant, type DifficultyMode,
+} from './difficulty'
 import { createScoreState, saveHighScore, unlockExtra, type ScoreState } from './score'
 import { createKillCounts, saveGameRecord, type KillCounts } from './stats'
+import { createStars, updateStars, renderStars } from './background'
+import { generatePowerUpOptions } from './powerup'
+import {
+  renderBossAppearing, renderStageClear, renderPowerUpSelect, renderCountdown,
+} from './overlays'
+import { CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_CENTER_X } from './constants'
 
-const STAR_COUNT = 80
 const BOSS_APPEARING_DURATION = 1500
 const STAGE_CLEAR_DURATION = 2000
-const STAGE_CLEAR_FADE_IN = 600
-const CANVAS_W = 390
-const CANVAS_H = 844
-const CANVAS_CX = CANVAS_W / 2
-
-interface Star {
-  x: number
-  y: number
-  r: number
-  speed: number
-}
-
-function createStars(): Star[] {
-  return Array.from({ length: STAR_COUNT }, () => ({
-    x: Math.random() * CANVAS_W,
-    y: Math.random() * CANVAS_H,
-    r: 0.5 + Math.random() * 1.5,
-    speed: 20 + Math.random() * 40,
-  }))
-}
-
-function updateStars(stars: Star[], delta: number): void {
-  const dt = delta / 1000
-  for (const s of stars) {
-    s.y += s.speed * dt
-    if (s.y > CANVAS_H) {
-      s.y = -2
-      s.x = Math.random() * CANVAS_W
-    }
-  }
-}
-
-function renderStars(ctx: CanvasRenderingContext2D, stars: Star[]): void {
-  ctx.fillStyle = '#FFFFFF'
-  for (const s of stars) {
-    ctx.beginPath()
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
-    ctx.fill()
-  }
-}
-
-function generateOptions(
-  stage: number,
-  weaponLevel: number,
-  mode: DifficultyMode
-): [PowerUpOption, PowerUpOption] {
-  const left: PowerUpOption = stage >= 5 || mode === 'EXTRA'
-    ? { kind: 'HP_2', label: 'HP +2', sub: '残機を2回復' }
-    : { kind: 'HP', label: 'HP +1', sub: '残機を1回復' }
-  const candidates: PowerUpOption[] = [
-    { kind: 'FIRE_RATE', label: '連射強化', sub: '発射間隔 -30ms' },
-    { kind: 'BULLET_SPEED', label: '弾速強化', sub: '弾速 +120px/秒' },
-  ]
-
-  const weaponUpgrade: PowerUpOption = {
-    kind: 'WEAPON_UPGRADE',
-    label: '武器強化',
-    sub: `${weaponName(weaponLevel + 1)}に進化`,
-  }
-  const offersWeapon = mode === 'EXTRA'
-    ? weaponLevel < MAX_WEAPON_LEVEL
-    : (stage === 3 || stage === 5) && weaponLevel < 3
-
-  const right = offersWeapon
-    ? weaponUpgrade
-    : candidates[Math.floor(Math.random() * candidates.length)]
-
-  return [left, right]
-}
-
-function drawOptionBox(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number,
-  opt: PowerUpOption, color: string
-): void {
-  ctx.fillStyle = color
-  ctx.strokeStyle = '#FFFFFF'
-  ctx.lineWidth = 2
-  ctx.fillRect(x, y, w, h)
-  ctx.strokeRect(x, y, w, h)
-
-  ctx.fillStyle = '#FFFFFF'
-  ctx.font = 'bold 22px sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText(opt.label, x + w / 2, y + h / 2 - 10)
-  ctx.font = '16px sans-serif'
-  ctx.fillText(opt.sub, x + w / 2, y + h / 2 + 20)
-}
 
 export interface GameEngine {
   state: GameState
@@ -137,7 +56,7 @@ export function createGameEngine(
   let score = createScoreState(0)
   const stageCount = getStageCount(mode)
   let player = createPlayer(mode)
-  let bossLabel = 'BOSS!'
+  let bossVariant: BossVariant = 'normal'
   let enemies: Enemy[] = []
   let bullets: Bullet[] = []
   let particles: Particle[] = []
@@ -152,7 +71,6 @@ export function createGameEngine(
   let running = false
   let prevTouchActive = false
   let tapX = 0
-  let tapY = 0
   let hasTap = false
   let healSpawnTimer = 0
   let powerUpCanAcceptTap = false
@@ -220,7 +138,6 @@ export function createGameEngine(
     if (prevTouchActive && !touch.active) {
       hasTap = true
       tapX = touch.x
-      tapY = touch.y
     }
     prevTouchActive = touch.active
 
@@ -255,7 +172,7 @@ export function createGameEngine(
       }
       if (powerUpCanAcceptTap && hasTap) {
         hasTap = false
-        const chosen = tapX < CANVAS_CX ? state.options[0] : state.options[1]
+        const chosen = tapX < CANVAS_CENTER_X ? state.options[0] : state.options[1]
         applyUpgrade(player, chosen.kind)
         resetPlayerPosition(player)
         startStage(state.stage + 1)
@@ -332,8 +249,8 @@ export function createGameEngine(
       if (state.type === 'PLAYING') {
         const diff = getDifficulty(stage, mode)
         if (stageScore >= diff.bossScoreThreshold) {
-          const bossEnemy = createBoss(stage, diff)
-          bossLabel = diff.bossVariant === 'final' ? 'FINAL BOSS!' : 'BOSS!'
+          const bossEnemy = createBoss(diff)
+          bossVariant = diff.bossVariant
           enemies = []
           bullets = bullets.filter((b) => !b.isEnemy)
           enemies.push(bossEnemy)
@@ -392,7 +309,7 @@ export function createGameEngine(
           setState({ type: 'GAME_CLEAR', score: score.total, stage: state.stage })
         } else {
           powerUpCanAcceptTap = !touch.active
-          setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generateOptions(state.stage, player.weaponLevel, mode) })
+          setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generatePowerUpOptions(state.stage, player.weaponLevel, mode) })
         }
       } else {
         setState({ ...state, elapsed })
@@ -401,10 +318,9 @@ export function createGameEngine(
   }
 
   function render(): void {
-    const dpr = window.devicePixelRatio || 1
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H)
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
     ctx.fillStyle = '#000000'
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
     const offset = reduceMotion ? { x: 0, y: 0 } : shakeOffset(shake)
     ctx.save()
@@ -421,49 +337,10 @@ export function createGameEngine(
 
     ctx.restore()
 
-    if (state.type === 'BOSS_APPEARING') {
-      ctx.fillStyle = bossLabel === 'BOSS!' ? 'rgba(170,0,255,0.3)' : 'rgba(255,34,102,0.35)'
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
-      ctx.fillStyle = '#FFFFFF'
-      ctx.font = 'bold 36px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText(bossLabel, CANVAS_CX, 422)
-    }
-
-    if (state.type === 'STAGE_CLEAR') {
-      ctx.fillStyle = `rgba(0,0,0,${0.5 * Math.min(1, state.elapsed / STAGE_CLEAR_FADE_IN)})`
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
-      ctx.fillStyle = '#FFFFFF'
-      ctx.font = 'bold 42px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('STAGE CLEAR!', CANVAS_CX, 400)
-      ctx.font = '24px sans-serif'
-      ctx.fillText(`BONUS +${getStageClearBonus(state.stage, mode)}`, CANVAS_CX, 450)
-    }
-
-    if (state.type === 'POWER_UP_SELECT') {
-      ctx.fillStyle = 'rgba(0,0,0,0.75)'
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
-      ctx.fillStyle = '#FFFFFF'
-      ctx.font = 'bold 28px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('POWER UP!', CANVAS_CX, 200)
-      ctx.font = '18px sans-serif'
-      ctx.fillText('どちらかを選んでタップ', CANVAS_CX, 240)
-      drawOptionBox(ctx, 20, 300, 165, 220, state.options[0], '#1A4488')
-      drawOptionBox(ctx, 205, 300, 165, 220, state.options[1], '#885500')
-    }
-
-    if (state.type === 'COUNTDOWN') {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
-      ctx.fillStyle = '#FFFFFF'
-      ctx.font = 'bold 72px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText(String(Math.ceil(state.remaining / 1000)), CANVAS_CX, 450)
-    }
-
-    void dpr
+    if (state.type === 'BOSS_APPEARING') renderBossAppearing(ctx, bossVariant)
+    if (state.type === 'STAGE_CLEAR') renderStageClear(ctx, state.elapsed, getStageClearBonus(state.stage, mode))
+    if (state.type === 'POWER_UP_SELECT') renderPowerUpSelect(ctx, state.options)
+    if (state.type === 'COUNTDOWN') renderCountdown(ctx, state.remaining)
   }
 
   return {

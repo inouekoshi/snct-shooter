@@ -1,6 +1,6 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app'
 import { getFirestore, Timestamp } from 'firebase-admin/firestore'
-import type { LeaderboardBoard } from './leaderboard'
+import type { LeaderboardBoard, LeaderboardEntry } from './leaderboard'
 
 function initFirebase() {
   if (getApps().length === 0) {
@@ -11,13 +11,6 @@ function initFirebase() {
     initializeApp({ credential: cert(parsed) })
   }
   return getFirestore()
-}
-
-export interface LeaderboardEntry {
-  name: string
-  score: number
-  stage: number
-  createdAt?: number
 }
 
 // 環境に応じてコレクションを切り替える (本番は 'scores', 開発・プレビューは 'scores_dev')

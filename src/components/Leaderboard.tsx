@@ -1,13 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { LeaderboardBoard } from '@/lib/leaderboard'
-
-interface LeaderboardEntry {
-  name: string
-  score: number
-  stage: number
-}
+import type { LeaderboardBoard, LeaderboardEntry } from '@/lib/leaderboard'
 
 interface Props {
   highlightScore?: number

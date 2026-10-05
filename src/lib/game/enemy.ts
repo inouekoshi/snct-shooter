@@ -1,5 +1,6 @@
 import type { BossVariant, DifficultyParams } from './difficulty'
 import { createEnemyBullet, type Bullet } from './bullet'
+import { CANVAS_HEIGHT, CANVAS_CENTER_X, PLAYER_START_Y } from './constants'
 
 export type EnemyKind = 'normal' | 'attack' | 'boss' | 'heal'
 
@@ -26,7 +27,7 @@ const ATTACK_SPREAD_DEG = 20
 const AIMED_SPREAD_DEG = 15
 const FAN_TOTAL_DEG = 80
 
-const PLAYER_BASE_Y = 760
+const OFFSCREEN_MARGIN = 76
 
 function randomSpawnX(): number {
   return 40 + Math.random() * 310
@@ -90,11 +91,11 @@ export function createHealEnemy(): Enemy {
   }
 }
 
-export function createBoss(stage: number, diff: DifficultyParams): Enemy {
+export function createBoss(diff: DifficultyParams): Enemy {
   const isFinal = diff.bossVariant === 'final'
   return {
     kind: 'boss',
-    x: 195,
+    x: CANVAS_CENTER_X,
     y: -60,
     radius: isFinal ? 48 : 40,
     hp: diff.bossHp,
@@ -133,7 +134,7 @@ export function updateEnemies(
       e.fireTimer -= delta
       if (e.fireTimer <= 0) {
         e.fireTimer = e.fireInterval
-        const baseAngle = Math.atan2(PLAYER_BASE_Y - e.y, playerX - e.x)
+        const baseAngle = Math.atan2(PLAYER_START_Y - e.y, playerX - e.x)
         const speed = e.vx === 0 ? e.bulletSpeed : e.bulletSpeed * 0.85
         fireSpread(bullets, e.x, e.y, baseAngle, speed, e.shotCount, ATTACK_SPREAD_DEG, false)
       }
@@ -160,7 +161,7 @@ function updateBoss(boss: Enemy, delta: number, playerX: number, bullets: Bullet
     const bp = boss.bossParams!
     if (hpRatio > 0.5) {
       boss.fireTimer = bp.interval1
-      const aim = Math.atan2(PLAYER_BASE_Y - boss.y, playerX - boss.x)
+      const aim = Math.atan2(PLAYER_START_Y - boss.y, playerX - boss.x)
       fireSpread(bullets, boss.x, boss.y, aim, bp.bulletSpeed1, bp.aimedShots, AIMED_SPREAD_DEG, true)
     } else if (hpRatio > 0.25) {
       boss.fireTimer = bp.interval2
@@ -194,7 +195,7 @@ function fireSpread(
 }
 
 export function removeOffscreenEnemies(enemies: Enemy[]): Enemy[] {
-  return enemies.filter((e) => e.y < 920)
+  return enemies.filter((e) => e.y < CANVAS_HEIGHT + OFFSCREEN_MARGIN)
 }
 
 export function enemyColor(e: Enemy): string {

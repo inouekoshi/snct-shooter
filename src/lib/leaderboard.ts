@@ -1,5 +1,12 @@
 export type LeaderboardBoard = 'normal' | 'extra'
 
+export interface LeaderboardEntry {
+  name: string
+  score: number
+  stage: number
+  createdAt?: number
+}
+
 export const SCORE_LIMITS: Record<LeaderboardBoard, Record<number, number>> = {
   normal: {
     1: 2000, 2: 4500, 3: 7400, 4: 10700,

@@ -83,7 +83,7 @@ export default function GameCanvas({ mode, onGameOver, onGameClear }: Props) {
       cleanupTouch()
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [onGameOver])
+  }, [mode, onGameOver, onGameClear])
 
 
   const isPaused = stateType === 'PAUSED'

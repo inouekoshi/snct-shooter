@@ -1,3 +1,5 @@
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from './constants'
+
 export interface Bullet {
   x: number
   y: number
@@ -12,6 +14,7 @@ export interface Bullet {
 }
 
 export const LASER_DAMAGE = 15
+const OFFSCREEN_MARGIN = 20
 const LASER_LENGTH = 28
 const LASER_WIDTH = 4
 
@@ -75,7 +78,10 @@ export function updateBullets(bullets: Bullet[], delta: number): void {
 }
 
 export function removeOffscreenBullets(bullets: Bullet[]): Bullet[] {
-  return bullets.filter((b) => b.y > -20 && b.y < 864 && b.x > -20 && b.x < 410)
+  return bullets.filter((b) =>
+    b.y > -OFFSCREEN_MARGIN && b.y < CANVAS_HEIGHT + OFFSCREEN_MARGIN &&
+    b.x > -OFFSCREEN_MARGIN && b.x < CANVAS_WIDTH + OFFSCREEN_MARGIN
+  )
 }
 
 export function renderBullets(ctx: CanvasRenderingContext2D, bullets: Bullet[]): void {
