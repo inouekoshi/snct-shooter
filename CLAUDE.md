@@ -31,6 +31,7 @@
 詳細は `GEMINI.md` を参照。
 
 - `main`: 本番。直接コミットせず、`dev` からマージする
+- タスクは GitHub Issues で管理（一覧と全体像は `docs/tasks.md`）
 - `dev`: 開発用。push すると Vercel のプレビュー環境（固定URL、README 参照）に自動デプロイされる
 - Firestore のコレクションは `VERCEL_ENV` で自動切替（本番 `scores`・`scores_extra` / それ以外は末尾に `_dev`）
 - 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` が必要（ローカルは `.env.local`）
@@ -38,40 +39,13 @@
 
 ## ディレクトリ構成
 
-```
-src/
-  app/
-    page.tsx              # スタート画面（難易度選択・ランキング・統計）
-    game/page.tsx         # ゲーム画面（ゲームオーバー/クリア・スコア投稿）
-    layout.tsx            # PWA・Portrait固定・セーフエリア
-    sw.ts                 # Serwist Service Worker エントリ
-    api/scores/route.ts   # ランキングAPI（GET: top20 / POST: 投稿・バリデーション）
-  components/
-    GameCanvas.tsx        # Canvas コンポーネント
-    HUD.tsx               # pointer-events: none でCanvas上に重ねる
-    Leaderboard.tsx       # ランキング表示
-    StatsModal.tsx        # プレイ履歴・統計表示
-    RotatePrompt.tsx      # 横向き時の回転促進
-  lib/
-    firestore.ts          # Firebase Admin SDK（サーバー専用）
-    leaderboard.ts        # ランキング種別（normal/extra）とスコア上限
-    game/
-      engine.ts           # ゲームループ・状態遷移・スポーン・当たり処理
-      state.ts            # State Machine の型定義
-      player.ts           # 自機・パワーアップ適用
-      enemy.ts            # 敵（通常・攻撃・回復・ボス）
-      bullet.ts           # 弾（自機・敵）
-      collision.ts        # 衝突判定（円同士）・自機弾の命中処理
-      effects.ts          # 撃破パーティクル・画面揺れ
-      score.ts            # ハイスコア・EXTRA解禁状態（localStorage）
-      stats.ts            # プレイ履歴・撃破数統計
-      difficulty.ts       # ステージ・難易度別パラメータ
-      touch.ts            # タッチ入力バッファ
-      __tests__/          # Vitest のテスト
-public/
-  manifest.json
-  icons/icon-192.png, icon-512.png
-```
+詳細は `docs/architecture.md` §1。要点:
+
+- `src/app/`: 画面（`page.tsx` スタート、`game/page.tsx` ゲーム）と API（`api/scores/route.ts`）
+- `src/components/`: `GameCanvas`・`HUD`・`ResultScreen`・`ScoreSubmit`・`Leaderboard`・`StatsModal` など
+- `src/lib/game/`: ゲームロジック。`engine.ts` が統括し、難易度（`difficulty.ts`）・パワーアップ（`powerup.ts`）・命中処理（`collision.ts`）・演出（`effects.ts`・`overlays.ts`）などに分割。共通定数は `constants.ts`
+- `src/lib/`: `firestore.ts`（サーバー専用）、`leaderboard.ts`（ランキング種別・スコア上限）、`playerName.ts`
+- テスト: `src/**/__tests__/*.test.ts`
 
 ## 重要な実装メモ
 

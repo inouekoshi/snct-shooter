@@ -466,40 +466,7 @@ NORMAL をクリアしたプレイヤー向けの高難度モード。
 
 ### 5.1 ディレクトリ構成
 
-```
-src/
-  app/
-    page.tsx              # スタート画面（'use client'）
-    game/
-      page.tsx            # ゲーム画面（'use client'）
-    layout.tsx            # PWA設定・メタタグ・Portrait固定・セーフエリア
-    sw.ts                 # Serwist Service Worker エントリポイント
-    api/
-      scores/route.ts     # ランキングAPI（GET / POST）
-  components/
-    GameCanvas.tsx        # 'use client' Canvas コンポーネント
-    HUD.tsx               # pointer-events: none のHTML要素でCanvas上に重ねる
-    Leaderboard.tsx       # ランキング表示
-    StatsModal.tsx        # プレイ履歴・統計表示
-    RotatePrompt.tsx      # 横向き時の回転促進メッセージ
-  lib/
-    firestore.ts          # Firebase Admin SDK（サーバー専用）
-    game/
-      engine.ts           # ゲームループ（requestAnimationFrame + delta-time）
-      state.ts            # State Machine（型定義）
-      player.ts           # 自機
-      enemy.ts            # 敵（通常・攻撃・回復・ボス）
-      bullet.ts           # 弾（自機弾・敵弾）
-      collision.ts        # 衝突判定（円同士）
-      score.ts            # スコア管理・localStorage
-      stats.ts            # プレイ履歴・統計
-      difficulty.ts       # ステージ・難易度別パラメータ管理
-      touch.ts            # タッチ入力バッファ管理
-      __tests__/          # Vitest のテスト
-  public/
-    manifest.json         # PWAマニフェスト
-    icons/                # PWAアイコン（192×192, 512×512）
-```
+ディレクトリ構成と各モジュールの役割は [architecture.md §1](architecture.md#1-ディレクトリ構造) を参照。
 
 ### 5.2 ゲームループ（delta-time ベース）
 

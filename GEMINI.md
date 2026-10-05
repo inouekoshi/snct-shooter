@@ -9,6 +9,6 @@
 
 ## 2. データベース（Firestore）の環境分離
 - テストデータによる本番ランキングの汚染を防ぐため、アクセスするFirestoreコレクションを自動で切り替えています。
-  - **本番環境 (`main`):** `scores` コレクション
-  - **開発環境 (`dev` / プレビュー):** `scores_dev` コレクション
+  - **本番環境 (`main`):** `scores`（NORMAL）/ `scores_extra`（EXTRA）コレクション
+  - **開発環境 (`dev` / プレビュー):** `scores_dev` / `scores_extra_dev` コレクション
 - Vercelの環境変数 `VERCEL_ENV` に応じて自動判定されます。`FIREBASE_SERVICE_ACCOUNT_KEY` 自体は全環境共通です。
