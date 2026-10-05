@@ -69,13 +69,13 @@ function BarChart({ records }: { records: LifetimeStats['records'] }) {
             <span
               style={{
                 fontSize: '11px',
-                color: '#666',
+                color: r.mode === 'EXTRA' ? '#FF2266' : '#666',
                 width: '24px',
                 textAlign: 'right',
                 flexShrink: 0,
               }}
             >
-              S{r.stage}
+              {r.mode === 'EXTRA' ? `EX${r.stage}` : `S${r.stage}`}
             </span>
           </div>
         )
@@ -94,7 +94,8 @@ export default function StatsModal({ onClose }: Props) {
   if (!stats) return null
 
   const hasPlayed = stats.totalPlays > 0
-  const bestScore = stats.records.length > 0 ? Math.max(...stats.records.map((r) => r.score)) : 0
+  const normalRecords = stats.records.filter((r) => r.mode !== 'EXTRA')
+  const bestScore = normalRecords.length > 0 ? Math.max(...normalRecords.map((r) => r.score)) : 0
 
   return (
     <div

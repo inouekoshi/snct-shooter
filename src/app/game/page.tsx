@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { DifficultyMode } from '@/lib/game/difficulty'
+import { getStageCount, type DifficultyMode } from '@/lib/game/difficulty'
+import { isExtraUnlocked } from '@/lib/game/score'
 import dynamic from 'next/dynamic'
 import RotatePrompt from '@/components/RotatePrompt'
 import Leaderboard from '@/components/Leaderboard'
@@ -48,10 +49,18 @@ const BTN_OUTLINE: React.CSSProperties = {
   cursor: 'pointer',
 }
 
+function parseMode(value: string | null): DifficultyMode {
+  const upper = value?.toUpperCase()
+  if (upper === 'EASY' || upper === 'EXTRA') return upper
+  return 'NORMAL'
+}
+
 function GamePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const gameMode = (searchParams.get('mode')?.toUpperCase() === 'EASY' ? 'EASY' : 'NORMAL') as DifficultyMode
+  const gameMode = parseMode(searchParams.get('mode'))
+  const isExtra = gameMode === 'EXTRA'
+  const [extraAllowed, setExtraAllowed] = useState<boolean | null>(null)
 
   const [gameOver, setGameOver] = useState<GameOverData | null>(null)
   const [gameClear, setGameClear] = useState<GameClearData | null>(null)
@@ -62,6 +71,13 @@ function GamePageContent() {
   const [myRank, setMyRank] = useState<number | null>(null)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const currentScore = useRef<number>(0)
+
+  useEffect(() => {
+    if (!isExtra) return
+    const allowed = isExtraUnlocked()
+    setExtraAllowed(allowed)
+    if (!allowed) router.replace('/')
+  }, [isExtra, router])
 
   useEffect(() => {
     const update = () => setScale(Math.min(1, window.innerHeight / 844))
@@ -105,7 +121,7 @@ function GamePageContent() {
       const res = await fetch('/api/scores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: playerName || 'PLAYER', score, stage }),
+        body: JSON.stringify({ name: playerName || 'PLAYER', score, stage, mode: isExtra ? 'extra' : 'normal' }),
       })
       const data = await res.json()
       if (res.ok && data.ok) {
@@ -216,7 +232,7 @@ function GamePageContent() {
     <>
       <RotatePrompt />
       <div style={{ position: 'relative', width: '390px', height: '844px', transform: `scale(${scale})`, transformOrigin: 'top center' }}>
-        {!gameOver && !gameClear && <GameCanvas mode={gameMode} onGameOver={handleGameOver} onGameClear={handleGameClear} />}
+        {!gameOver && !gameClear && (!isExtra || extraAllowed) && <GameCanvas mode={gameMode} onGameOver={handleGameOver} onGameClear={handleGameClear} />}
 
         {gameOver && (
           <div
@@ -271,6 +287,7 @@ function GamePageContent() {
             {showLeaderboard && (
               <Leaderboard
                 highlightScore={gameOver.score}
+                initialBoard={isExtra ? 'extra' : 'normal'}
                 onClose={() => setShowLeaderboard(false)}
               />
             )}
@@ -293,9 +310,15 @@ function GamePageContent() {
               padding: '0 24px',
             }}
           >
-            <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: '#FFFF00', textAlign: 'center' }}>
-              CONGRATULATIONS!<br/>GAME CLEAR
+            <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: isExtra ? '#FF2266' : '#FFFF00', textAlign: 'center' }}>
+              CONGRATULATIONS!<br/>{isExtra ? 'EXTRA CLEAR' : 'GAME CLEAR'}
             </h2>
+
+            {gameMode === 'NORMAL' && (
+              <p style={{ fontSize: '16px', fontWeight: 'bold', color: '#FF2266', textAlign: 'center' }}>
+                EXTRAモードが解禁されました！
+              </p>
+            )}
 
             <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
@@ -308,7 +331,7 @@ function GamePageContent() {
               </div>
             </div>
 
-            {renderSubmitFlow(gameClear.score, 8)}
+            {renderSubmitFlow(gameClear.score, getStageCount(gameMode))}
 
             <div style={{ display: 'flex', gap: '16px' }}>
               <button
@@ -328,6 +351,7 @@ function GamePageContent() {
             {showLeaderboard && (
               <Leaderboard
                 highlightScore={gameClear.score}
+                initialBoard={isExtra ? 'extra' : 'normal'}
                 onClose={() => setShowLeaderboard(false)}
               />
             )}

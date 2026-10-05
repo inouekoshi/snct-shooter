@@ -8,6 +8,9 @@ import {
   resetFireTimer,
   resetPlayerPosition,
   applyUpgrade,
+  firePlayerBullets,
+  weaponName,
+  MAX_WEAPON_LEVEL,
 } from '../player'
 import { createTouchBuffer } from '../touch'
 
@@ -117,9 +120,56 @@ describe('applyUpgrade', () => {
     expect(p.bulletSpeed).toBe(1080)
   })
 
-  it('武器レベルは3が上限', () => {
+  it('武器レベルは5が上限', () => {
     const p = createPlayer()
-    for (let i = 0; i < 5; i++) applyUpgrade(p, 'WEAPON_UPGRADE')
-    expect(p.weaponLevel).toBe(3)
+    for (let i = 0; i < 10; i++) applyUpgrade(p, 'WEAPON_UPGRADE')
+    expect(p.weaponLevel).toBe(MAX_WEAPON_LEVEL)
+  })
+})
+
+describe('EXTRAモードの自機', () => {
+  it('強化済みの状態で始まる', () => {
+    expect(createPlayer('EXTRA')).toMatchObject({ lives: 5, fireInterval: 140, bulletSpeed: 840, weaponLevel: 3 })
+  })
+
+  it('EASY・NORMALは通常の初期値', () => {
+    expect(createPlayer('EASY')).toEqual(createPlayer('NORMAL'))
+  })
+})
+
+describe('firePlayerBullets', () => {
+  const fire = (weaponLevel: number) => {
+    const p = createPlayer()
+    p.weaponLevel = weaponLevel
+    return firePlayerBullets(p)
+  }
+
+  it('武器レベルごとの弾数', () => {
+    expect(fire(1)).toHaveLength(1)
+    expect(fire(2)).toHaveLength(2)
+    expect(fire(3)).toHaveLength(3)
+    expect(fire(4)).toHaveLength(5)
+    expect(fire(5)).toHaveLength(5)
+  })
+
+  it('どの弾も自機の弾速で上方向へ飛ぶ', () => {
+    for (let level = 1; level <= MAX_WEAPON_LEVEL; level++) {
+      for (const b of fire(level)) {
+        expect(Math.hypot(b.vx, b.vy)).toBeCloseTo(600)
+        expect(b.vy).toBeLessThan(0)
+      }
+    }
+  })
+
+  it('Lv.5だけ貫通レーザーを含む', () => {
+    expect(fire(4).some((b) => b.pierce)).toBe(false)
+    const lv5 = fire(5)
+    expect(lv5.filter((b) => b.pierce)).toHaveLength(1)
+    expect(lv5.find((b) => b.pierce)!.vx).toBe(0)
+  })
+
+  it('武器名を返す', () => {
+    expect(weaponName(4)).toBe('5-Way')
+    expect(weaponName(5)).toBe('貫通レーザー')
   })
 })

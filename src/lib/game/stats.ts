@@ -1,3 +1,5 @@
+import type { DifficultyMode } from './difficulty'
+
 const STATS_KEY = 'shooter-stats'
 const MAX_RECORDS = 20
 
@@ -13,6 +15,7 @@ export interface GameRecord {
   stage: number
   playedAt: number
   kills: KillCounts
+  mode?: DifficultyMode
 }
 
 export interface LifetimeStats {
@@ -52,7 +55,9 @@ export function saveGameRecord(record: GameRecord): void {
   try {
     const current = loadStats()
     const records = [record, ...current.records].slice(0, MAX_RECORDS)
-    const maxStageReached = Math.max(current.maxStageReached, record.stage)
+    const maxStageReached = record.mode === 'EXTRA'
+      ? current.maxStageReached
+      : Math.max(current.maxStageReached, record.stage)
     const totalPlays = current.totalPlays + 1
     const totalKills: KillCounts = {
       normal: current.totalKills.normal + record.kills.normal,

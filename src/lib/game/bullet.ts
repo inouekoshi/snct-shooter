@@ -7,7 +7,13 @@ export interface Bullet {
   damage: number
   isEnemy: boolean
   isBoss: boolean
+  pierce: boolean
+  hitTargets: Set<object>
 }
+
+export const LASER_DAMAGE = 15
+const LASER_LENGTH = 28
+const LASER_WIDTH = 4
 
 export function createPlayerBullet(x: number, y: number, vx: number, vy: number): Bullet {
   return {
@@ -19,6 +25,23 @@ export function createPlayerBullet(x: number, y: number, vx: number, vy: number)
     damage: 10,
     isEnemy: false,
     isBoss: false,
+    pierce: false,
+    hitTargets: new Set(),
+  }
+}
+
+export function createPlayerLaser(x: number, y: number, speed: number): Bullet {
+  return {
+    x,
+    y,
+    vx: 0,
+    vy: -speed,
+    radius: 6,
+    damage: LASER_DAMAGE,
+    isEnemy: false,
+    isBoss: false,
+    pierce: true,
+    hitTargets: new Set(),
   }
 }
 
@@ -38,6 +61,8 @@ export function createEnemyBullet(
     damage: 1,
     isEnemy: true,
     isBoss,
+    pierce: false,
+    hitTargets: new Set(),
   }
 }
 
@@ -55,6 +80,11 @@ export function removeOffscreenBullets(bullets: Bullet[]): Bullet[] {
 
 export function renderBullets(ctx: CanvasRenderingContext2D, bullets: Bullet[]): void {
   for (const b of bullets) {
+    if (b.pierce) {
+      ctx.fillStyle = '#00FFFF'
+      ctx.fillRect(b.x - LASER_WIDTH / 2, b.y - LASER_LENGTH / 2, LASER_WIDTH, LASER_LENGTH)
+      continue
+    }
     if (b.isEnemy) {
       ctx.fillStyle = b.isBoss ? '#FF0000' : '#FF4444'
     } else {

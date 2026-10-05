@@ -36,7 +36,7 @@ export default function GameCanvas({ mode, onGameOver, onGameClear }: Props) {
     const touch = createTouchBuffer()
     const cleanupTouch = registerTouchHandlers(canvas, touch)
 
-    const initialHighScore = loadHighScore()
+    const initialHighScore = loadHighScore(mode)
 
     const engine = createGameEngine(
       canvas,

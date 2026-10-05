@@ -69,7 +69,7 @@ firestore.indexes.json        # Firestore インデックス定義 (現状なし
 - `PAUSED`: タブの移動やバックグラウンド移行時の自動一時停止
 - `COUNTDOWN`: PAUSED からの復帰カウントダウン
 - `GAME_OVER`: プレイヤーの残機がゼロになった状態
-- `GAME_CLEAR`: 全8ステージをクリアした状態
+- `GAME_CLEAR`: 最終ステージをクリアした状態（NORMAL/EASY は8、EXTRA は3）
 
 ### 2.3 描画システム (Canvas API)
 React のステートを用いずに、直接 HTML Canvas 2D API (`GameCanvas.tsx`) を操作して描画します。
@@ -101,11 +101,15 @@ iOS/Android 双方でのオフライン動作およびアプリライクな体�
 ### 4.2 データ構造
 Firestore コレクションはデプロイ環境（`VERCEL_ENV`）に応じて自動的に切り替わり、テストデータが本番環境に混入するのを防ぎます。
 
-- **Production 環境 (`main` ブランチ):** `scores` コレクション
-- **Preview / Development 環境 (`dev` 等):** `scores_dev` コレクション
+ランキングは NORMAL と EXTRA の2種類あり、それぞれ別コレクションに保存します（`src/lib/firestore.ts` の `collectionName`）。
+
+| ランキング | Production (`main`) | Preview / Development (`dev` 等) |
+|---|---|---|
+| NORMAL | `scores` | `scores_dev` |
+| EXTRA | `scores_extra` | `scores_extra_dev` |
 
 ```
-scores (または scores_dev)/{auto-id}
+scores / scores_extra (または *_dev)/{auto-id}
   name: string       // プレイヤー名（1〜10文字）
   score: number      // スコア
   stage: number      // 到達ステージ
@@ -118,16 +122,17 @@ scores (または scores_dev)/{auto-id}
 
 | メソッド | パス | 機能 |
 |---|---|---|
-| GET | `/api/scores` | トップ20のスコアを取得。`export const revalidate = 10` で Edge Cache を10秒利用しFirestore読み取り回数を削減 |
-| POST | `/api/scores` | スコアを投稿。バリデーション通過後にFirestoreへ書き込み、登録された順位を返却 |
+| GET | `/api/scores?mode=normal\|extra` | トップ20のスコアを取得（`mode` 省略時は NORMAL）。`export const revalidate = 10` で Edge Cache を10秒利用しFirestore読み取り回数を削減 |
+| POST | `/api/scores` | スコアを投稿（ボディ: `{ name, score, stage, mode }`、`mode` 省略時は NORMAL）。バリデーション通過後にFirestoreへ書き込み、登録された順位を返却 |
 
 ### 4.4 サーバーサイドバリデーション（チート対策）
 `src/app/api/scores/route.ts` でリクエストを以下の観点で検証する。
 
 - **名前**: 正規表現 `/^[\p{L}\p{N}\s\-_.]{1,10}$/u` に一致するUnicode文字・数字・一部記号のみ
 - **スコア**: 0以上9,999,999以下の整数
-- **ステージ**: 1〜8の整数
-- **ステージ別スコア上限**: 各ステージの理論最大スコア（`engine.ts` / `difficulty.ts` の数値から逆算）の1.5倍を上限とし、超過した値は400エラーで弾く
+- **モード**: `normal` / `extra`（省略時は `normal`）以外は400エラー
+- **ステージ**: NORMAL は1〜8、EXTRA は1〜3の整数
+- **ステージ別スコア上限**: 各ステージの理論最大スコア（`engine.ts` / `difficulty.ts` の数値から逆算）の1.5倍を上限とし、超過した値は400エラーで弾く。上限値は `src/lib/leaderboard.ts` の `SCORE_LIMITS` で管理
 
 ### 4.5 順位計算
 登録時の順位（rank）は、`getTopScores(100)` の結果から「自分のスコアより高いエントリ数 + 1」で算出。Firestoreの `count()` 集計クエリ（課金対象）を回避することで、無料枠の消費を抑えている。

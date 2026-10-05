@@ -133,3 +133,59 @@ describe('enemyColor', () => {
     expect(enemyColor(createAttackEnemy(diff))).toBe('#FFAA00')
   })
 })
+
+describe('EXTRAモードの敵', () => {
+  const extra = getDifficulty(1, 'EXTRA')
+  const finalDiff = getDifficulty(3, 'EXTRA')
+
+  it('攻撃敵は直進型3発・ジグザグ型5発を撃つ', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const straight = createAttackEnemy(extra)
+    straight.fireTimer = 0
+    const b1: Bullet[] = []
+    updateEnemies([straight], 16, 195, b1)
+    expect(b1).toHaveLength(3)
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.1)
+    const zigzag = createAttackEnemy(extra)
+    zigzag.fireTimer = 0
+    const b2: Bullet[] = []
+    updateEnemies([zigzag], 16, 195, b2)
+    expect(b2).toHaveLength(5)
+  })
+
+  it('攻撃敵のHPが難易度に従う', () => {
+    expect(createAttackEnemy(extra).hp).toBe(50)
+  })
+
+  it('最終ボスは専用の見た目・スコアで、弾幕が多い', () => {
+    const boss = createBoss(3, finalDiff)
+    expect(boss.bossVariant).toBe('final')
+    expect(boss.score).toBe(1000)
+    expect(enemyColor(boss)).toBe('#FF2266')
+
+    const fire = (ratio: number) => {
+      const b = createBoss(3, finalDiff)
+      b.hp = b.maxHp * ratio
+      b.fireTimer = 0
+      const bullets: Bullet[] = []
+      updateEnemies([b], 16, 195, bullets)
+      return bullets.length
+    }
+    expect(fire(1)).toBe(3)
+    expect(fire(0.5)).toBe(9)
+    expect(fire(0.25)).toBe(6)
+  })
+
+  it('扇形弾幕は左右対称で真下が中心', () => {
+    const b = createBoss(1, extra)
+    b.hp = b.maxHp * 0.5
+    b.fireTimer = 0
+    const bullets: Bullet[] = []
+    updateEnemies([b], 16, 195, bullets)
+    expect(bullets).toHaveLength(7)
+    const sumVx = bullets.reduce((acc, x) => acc + x.vx, 0)
+    expect(sumVx).toBeCloseTo(0)
+    expect(bullets[3].vx).toBeCloseTo(0)
+  })
+})

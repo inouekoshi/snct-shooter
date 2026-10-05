@@ -15,10 +15,11 @@
 - **特徴**:
   - 全8ステージ構成のやり応えのあるステージ制
   - 難易度選択（初心者向けのEASY / 標準のNORMAL）
+  - NORMALクリアで解禁される高難度の EXTRA モード（全3ステージ・専用ボス・5-Way / 貫通レーザー）
   - 片手で操作可能なシンプル設計（ドラッグ・スワイプのみで移動、弾は自動連射）
-  - ツイン弾や3-Wayに進化する「武器強化」システム
+  - ツイン弾・3-Way・5-Way・貫通レーザーに進化する「武器強化」システム
   - PWA（Progressive Web App）対応でオフラインでもプレイ可能
-  - オンラインリーダーボード（プレイヤー名を入れてスコア投稿、トップ20表示）※EASYモードは登録対象外
+  - オンラインリーダーボード（プレイヤー名を入れてスコア投稿、トップ20表示。NORMAL / EXTRA 別）※EASYモードは登録対象外
 - **画面表示**: Portrait（縦向き）固定。デバイスのセーフエリアも考慮した設計。
 
 詳細は仕様書 [docs/spec.md](docs/spec.md) を参照してください。
@@ -29,7 +30,7 @@
 - **言語**: TypeScript
 - **描画エンジン**: Canvas API + requestAnimationFrame (delta-time ベース制御)
 - **操作制御**: Touch Events API
-- **データ保存（ローカル）**: localStorage（ハイスコア・プレイヤー名）
+- **データ保存（ローカル）**: localStorage（ハイスコア・プレイヤー名・プレイ統計・EXTRA解禁状態）
 - **データ保存（オンライン）**: Firebase Firestore（リーダーボード）+ Firebase Admin SDK（API Routes 経由のみアクセス）
 - **PWA**: Serwist
 - **ホスティング**: Vercel（main ブランチ自動デプロイ）
@@ -96,8 +97,8 @@
 
 ### データベースの環境分離
 テストデータが本番のランキングに混入するのを防ぐため、Firestoreの参照先コレクションを自動で切り替えています。
-- Production環境: `scores` コレクションを使用
-- Preview/Development環境: `scores_dev` コレクションを使用
+- Production環境: `scores`（NORMAL）/ `scores_extra`（EXTRA）コレクションを使用
+- Preview/Development環境: `scores_dev` / `scores_extra_dev` コレクションを使用
 
 ※ 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` は Vercel ダッシュボードで Production / Preview / Development の3環境すべてに共通で設定されています。
 

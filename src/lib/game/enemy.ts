@@ -1,4 +1,4 @@
-import type { DifficultyParams } from './difficulty'
+import type { BossVariant, DifficultyParams } from './difficulty'
 import { createEnemyBullet, type Bullet } from './bullet'
 
 export type EnemyKind = 'normal' | 'attack' | 'boss' | 'heal'
@@ -17,8 +17,14 @@ export interface Enemy {
   score: number
   vx: number
   movePhase: number
+  shotCount: number
   bossParams?: DifficultyParams['bossParams']
+  bossVariant?: BossVariant
 }
+
+const ATTACK_SPREAD_DEG = 20
+const AIMED_SPREAD_DEG = 15
+const FAN_TOTAL_DEG = 80
 
 const PLAYER_BASE_Y = 760
 
@@ -41,6 +47,7 @@ export function createNormalEnemy(diff: DifficultyParams): Enemy {
     score: 10,
     vx: 0,
     movePhase: 0,
+    shotCount: 0,
   }
 }
 
@@ -51,8 +58,8 @@ export function createAttackEnemy(diff: DifficultyParams): Enemy {
     x: randomSpawnX(),
     y: -20,
     radius: 20,
-    hp: 30,
-    maxHp: 30,
+    hp: diff.attackEnemyHp,
+    maxHp: diff.attackEnemyHp,
     speed: diff.attackEnemySpeed,
     fireTimer: diff.attackEnemyFireInterval * Math.random(),
     fireInterval: diff.attackEnemyFireInterval,
@@ -60,6 +67,7 @@ export function createAttackEnemy(diff: DifficultyParams): Enemy {
     score: 30,
     vx: zigzag ? (Math.random() < 0.5 ? 1 : -1) * 70 : 0,
     movePhase: 0,
+    shotCount: zigzag ? diff.attackEnemyShots.zigzag : diff.attackEnemyShots.straight,
   }
 }
 
@@ -78,25 +86,29 @@ export function createHealEnemy(): Enemy {
     score: 0,
     vx: 0,
     movePhase: 0,
+    shotCount: 0,
   }
 }
 
 export function createBoss(stage: number, diff: DifficultyParams): Enemy {
+  const isFinal = diff.bossVariant === 'final'
   return {
     kind: 'boss',
     x: 195,
     y: -60,
-    radius: 40,
+    radius: isFinal ? 48 : 40,
     hp: diff.bossHp,
     maxHp: diff.bossHp,
     speed: diff.bossSpeed,
     fireTimer: diff.bossParams.interval1,
     fireInterval: diff.bossParams.interval1,
     bulletSpeed: diff.bossParams.bulletSpeed1,
-    score: 500,
+    score: isFinal ? 1000 : 500,
     vx: 0,
     movePhase: 0,
+    shotCount: 0,
     bossParams: diff.bossParams,
+    bossVariant: diff.bossVariant,
   }
 }
 
@@ -121,21 +133,9 @@ export function updateEnemies(
       e.fireTimer -= delta
       if (e.fireTimer <= 0) {
         e.fireTimer = e.fireInterval
-        const dx = playerX - e.x
-        const dy = PLAYER_BASE_Y - e.y
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1
-        const baseAngle = Math.atan2(dy, dx)
-
-        if (e.vx === 0) {
-          const speed = e.bulletSpeed
-          bullets.push(createEnemyBullet(e.x, e.y, (dx / dist) * speed, (dy / dist) * speed))
-        } else {
-          for (const offset of [-20, 0, 20]) {
-            const angle = baseAngle + (offset * Math.PI) / 180
-            const speed = e.bulletSpeed * 0.85
-            bullets.push(createEnemyBullet(e.x, e.y, Math.cos(angle) * speed, Math.sin(angle) * speed))
-          }
-        }
+        const baseAngle = Math.atan2(PLAYER_BASE_Y - e.y, playerX - e.x)
+        const speed = e.vx === 0 ? e.bulletSpeed : e.bulletSpeed * 0.85
+        fireSpread(bullets, e.x, e.y, baseAngle, speed, e.shotCount, ATTACK_SPREAD_DEG, false)
       }
     } else if (e.kind === 'boss') {
       updateBoss(e, delta, playerX, bullets)
@@ -160,24 +160,36 @@ function updateBoss(boss: Enemy, delta: number, playerX: number, bullets: Bullet
     const bp = boss.bossParams!
     if (hpRatio > 0.5) {
       boss.fireTimer = bp.interval1
-      const tx = playerX - boss.x
-      const ty = PLAYER_BASE_Y - boss.y
-      const dist = Math.sqrt(tx * tx + ty * ty) || 1
-      bullets.push(createEnemyBullet(boss.x, boss.y, (tx / dist) * bp.bulletSpeed1, (ty / dist) * bp.bulletSpeed1, true))
+      const aim = Math.atan2(PLAYER_BASE_Y - boss.y, playerX - boss.x)
+      fireSpread(bullets, boss.x, boss.y, aim, bp.bulletSpeed1, bp.aimedShots, AIMED_SPREAD_DEG, true)
     } else if (hpRatio > 0.25) {
       boss.fireTimer = bp.interval2
-      for (const offset of [-40, -20, 0, 20, 40]) {
-        const angle = Math.PI / 2 + (offset * Math.PI) / 180
-        bullets.push(createEnemyBullet(boss.x, boss.y, Math.cos(angle) * bp.bulletSpeed2, Math.sin(angle) * bp.bulletSpeed2, true))
-      }
+      const step = bp.fanWays > 1 ? FAN_TOTAL_DEG / (bp.fanWays - 1) : 0
+      fireSpread(bullets, boss.x, boss.y, Math.PI / 2, bp.bulletSpeed2, bp.fanWays, step, true)
     } else {
       boss.fireTimer = bp.interval3
       boss.movePhase = (boss.movePhase + Math.PI / 6) % (Math.PI * 2)
-      for (let i = 0; i < 3; i++) {
-        const angle = boss.movePhase + (i * Math.PI * 2) / 3
+      for (let i = 0; i < bp.spiralArms; i++) {
+        const angle = boss.movePhase + (i * Math.PI * 2) / bp.spiralArms
         bullets.push(createEnemyBullet(boss.x, boss.y, Math.cos(angle) * bp.bulletSpeed3, Math.sin(angle) * bp.bulletSpeed3, true))
       }
     }
+  }
+}
+
+function fireSpread(
+  bullets: Bullet[],
+  x: number,
+  y: number,
+  centerAngle: number,
+  speed: number,
+  count: number,
+  stepDeg: number,
+  isBoss: boolean
+): void {
+  for (let i = 0; i < count; i++) {
+    const angle = centerAngle + ((i - (count - 1) / 2) * stepDeg * Math.PI) / 180
+    bullets.push(createEnemyBullet(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, isBoss))
   }
 }
 
@@ -189,7 +201,7 @@ export function enemyColor(e: Enemy): string {
   if (e.kind === 'normal') return '#FF4444'
   if (e.kind === 'attack') return e.vx !== 0 ? '#FFAA00' : '#FF8800'
   if (e.kind === 'heal') return '#00CC88'
-  return '#AA00FF'
+  return e.bossVariant === 'final' ? '#FF2266' : '#AA00FF'
 }
 
 export function renderEnemies(ctx: CanvasRenderingContext2D, enemies: Enemy[]): void {
@@ -242,11 +254,22 @@ function renderBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const r = e.radius
   ctx.fillStyle = enemyColor(e)
   ctx.beginPath()
-  for (let i = 0; i < 6; i++) {
-    const angle = (i * Math.PI) / 3 - Math.PI / 6
-    const px = e.x + Math.cos(angle) * r * 1.4
-    const py = e.y + Math.sin(angle) * r * 0.8
-    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
+  if (e.bossVariant === 'final') {
+    const points = 16
+    for (let i = 0; i < points; i++) {
+      const angle = (i * Math.PI * 2) / points + e.movePhase
+      const len = i % 2 === 0 ? r * 1.3 : r * 0.75
+      const px = e.x + Math.cos(angle) * len
+      const py = e.y + Math.sin(angle) * len
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
+    }
+  } else {
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI) / 3 - Math.PI / 6
+      const px = e.x + Math.cos(angle) * r * 1.4
+      const py = e.y + Math.sin(angle) * r * 0.8
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
+    }
   }
   ctx.closePath()
   ctx.fill()
@@ -257,7 +280,7 @@ function renderBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const barY = e.y - r - 20
   ctx.fillStyle = '#333'
   ctx.fillRect(barX, barY, barW, barH)
-  ctx.fillStyle = '#AA00FF'
+  ctx.fillStyle = enemyColor(e)
   ctx.fillRect(barX, barY, barW * (e.hp / e.maxHp), barH)
   ctx.strokeStyle = '#FFFFFF'
   ctx.lineWidth = 1

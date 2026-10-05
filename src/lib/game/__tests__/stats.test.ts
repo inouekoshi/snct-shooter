@@ -80,6 +80,16 @@ describe('saveGameRecord', () => {
     expect(stats.records[1].score).toBe(500)
   })
 
+  it('EXTRAの記録は maxStageReached に影響しない', () => {
+    saveGameRecord(makeRecord(1000, 5))
+    saveGameRecord(makeRecord(9000, 3, { mode: 'EXTRA' }))
+    saveGameRecord(makeRecord(500, 2, { mode: 'EXTRA' }))
+    const stats = loadStats()
+    expect(stats.maxStageReached).toBe(5)
+    expect(stats.totalPlays).toBe(3)
+    expect(stats.records[0].mode).toBe('EXTRA')
+  })
+
   it('maxStageReached が正しく更新される', () => {
     saveGameRecord(makeRecord(500, 3))
     saveGameRecord(makeRecord(800, 5))

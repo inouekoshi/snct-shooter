@@ -3,7 +3,7 @@ import type { TouchBuffer } from './touch'
 import {
   createPlayer, updatePlayer, renderPlayer, canFire, resetFireTimer,
   hitPlayer, isPlayerInvincible, resetPlayerPosition, applyUpgrade,
-  PLAYER_RADIUS,
+  firePlayerBullets, weaponName, PLAYER_RADIUS, MAX_WEAPON_LEVEL,
 } from './player'
 import {
   createNormalEnemy, createAttackEnemy, createBoss, createHealEnemy,
@@ -15,11 +15,11 @@ import {
   SHAKE_PLAYER_HIT, SHAKE_BOSS_DEFEAT, type Particle,
 } from './effects'
 import {
-  createPlayerBullet, updateBullets, removeOffscreenBullets, renderBullets, type Bullet,
+  updateBullets, removeOffscreenBullets, renderBullets, type Bullet,
 } from './bullet'
-import { circlesOverlap } from './collision'
-import { getDifficulty, type DifficultyMode } from './difficulty'
-import { createScoreState, saveHighScore, type ScoreState } from './score'
+import { circlesOverlap, applyPlayerBulletHits } from './collision'
+import { getDifficulty, getStageCount, getStageClearBonus, type DifficultyMode } from './difficulty'
+import { createScoreState, saveHighScore, unlockExtra, type ScoreState } from './score'
 import { createKillCounts, saveGameRecord, type KillCounts } from './stats'
 
 const STAR_COUNT = 80
@@ -66,22 +66,32 @@ function renderStars(ctx: CanvasRenderingContext2D, stars: Star[]): void {
   }
 }
 
-function generateOptions(stage: number, weaponLevel: number): [PowerUpOption, PowerUpOption] {
-  const left: PowerUpOption = stage >= 5 
+function generateOptions(
+  stage: number,
+  weaponLevel: number,
+  mode: DifficultyMode
+): [PowerUpOption, PowerUpOption] {
+  const left: PowerUpOption = stage >= 5 || mode === 'EXTRA'
     ? { kind: 'HP_2', label: 'HP +2', sub: '残機を2回復' }
     : { kind: 'HP', label: 'HP +1', sub: '残機を1回復' }
   const candidates: PowerUpOption[] = [
     { kind: 'FIRE_RATE', label: '連射強化', sub: '発射間隔 -30ms' },
     { kind: 'BULLET_SPEED', label: '弾速強化', sub: '弾速 +120px/秒' },
   ]
-  
-  let right: PowerUpOption;
-  if ((stage === 3 || stage === 5) && weaponLevel < 3) {
-    right = { kind: 'WEAPON_UPGRADE', label: '武器強化', sub: '攻撃パターンが進化' }
-  } else {
-    right = candidates[Math.floor(Math.random() * candidates.length)]
+
+  const weaponUpgrade: PowerUpOption = {
+    kind: 'WEAPON_UPGRADE',
+    label: '武器強化',
+    sub: `${weaponName(weaponLevel + 1)}に進化`,
   }
-  
+  const offersWeapon = mode === 'EXTRA'
+    ? weaponLevel < MAX_WEAPON_LEVEL
+    : (stage === 3 || stage === 5) && weaponLevel < 3
+
+  const right = offersWeapon
+    ? weaponUpgrade
+    : candidates[Math.floor(Math.random() * candidates.length)]
+
   return [left, right]
 }
 
@@ -125,7 +135,9 @@ export function createGameEngine(
 
   let state: GameState = { type: 'IDLE' }
   let score = createScoreState(0)
-  let player = createPlayer()
+  const stageCount = getStageCount(mode)
+  let player = createPlayer(mode)
+  let bossLabel = 'BOSS!'
   let enemies: Enemy[] = []
   let bullets: Bullet[] = []
   let particles: Particle[] = []
@@ -185,9 +197,9 @@ export function createGameEngine(
   function triggerGameOver(stage: number): void {
     if (score.total > score.highScore) {
       score.highScore = score.total
-      saveHighScore(score.highScore)
+      saveHighScore(score.highScore, mode)
     }
-    saveGameRecord({ score: score.total, stage, playedAt: Date.now(), kills: { ...killCounts } })
+    saveGameRecord({ score: score.total, stage, playedAt: Date.now(), kills: { ...killCounts }, mode })
     setState({ type: 'GAME_OVER', score: score.total, stage })
   }
 
@@ -257,23 +269,7 @@ export function createGameEngine(
       const stage = (state as { stage: number }).stage
 
       if (canFire(player)) {
-        const speed = player.bulletSpeed
-        const y = player.y - 15
-        
-        if (player.weaponLevel === 1) {
-          bullets.push(createPlayerBullet(player.x, y, 0, -speed))
-        } else if (player.weaponLevel === 2) {
-          bullets.push(createPlayerBullet(player.x - 8, y, 0, -speed))
-          bullets.push(createPlayerBullet(player.x + 8, y, 0, -speed))
-        } else {
-          const angle = 15 * Math.PI / 180
-          const vx = speed * Math.sin(angle)
-          const vy = speed * Math.cos(angle)
-          bullets.push(createPlayerBullet(player.x, y, 0, -speed))
-          bullets.push(createPlayerBullet(player.x, y, -vx, -vy))
-          bullets.push(createPlayerBullet(player.x, y, vx, -vy))
-        }
-        
+        bullets.push(...firePlayerBullets(player))
         resetFireTimer(player)
       }
 
@@ -304,23 +300,7 @@ export function createGameEngine(
       bullets = removeOffscreenBullets(bullets)
       enemies = removeOffscreenEnemies(enemies)
 
-      const remainingBullets: Bullet[] = []
-      for (const b of bullets) {
-        if (b.isEnemy) {
-          remainingBullets.push(b)
-          continue
-        }
-        let hit = false
-        for (const e of enemies) {
-          if (circlesOverlap(b.x, b.y, b.radius, e.x, e.y, e.radius)) {
-            e.hp -= b.damage
-            hit = true
-            break
-          }
-        }
-        if (!hit) remainingBullets.push(b)
-      }
-      bullets = remainingBullets
+      bullets = applyPlayerBulletHits(bullets, enemies)
 
       const deadEnemies = enemies.filter((e) => e.hp <= 0)
       for (const e of deadEnemies) {
@@ -332,13 +312,14 @@ export function createGameEngine(
           player.lives += 1
         }
         if (e.kind === 'boss') {
-          score.total += stage * 100
+          score.total += getStageClearBonus(stage, mode)
           if (score.total > score.highScore) {
             score.highScore = score.total
-            saveHighScore(score.highScore)
+            saveHighScore(score.highScore, mode)
           }
-          if (stage >= 8) {
-            saveGameRecord({ score: score.total, stage, playedAt: Date.now(), kills: { ...killCounts } })
+          if (stage >= stageCount) {
+            saveGameRecord({ score: score.total, stage, playedAt: Date.now(), kills: { ...killCounts }, mode })
+            if (mode === 'NORMAL') unlockExtra()
           }
           setState({ type: 'STAGE_CLEAR', stage, elapsed: 0 })
           enemies = []
@@ -352,6 +333,7 @@ export function createGameEngine(
         const diff = getDifficulty(stage, mode)
         if (stageScore >= diff.bossScoreThreshold) {
           const bossEnemy = createBoss(stage, diff)
+          bossLabel = diff.bossVariant === 'final' ? 'FINAL BOSS!' : 'BOSS!'
           enemies = []
           bullets = bullets.filter((b) => !b.isEnemy)
           enemies.push(bossEnemy)
@@ -406,11 +388,11 @@ export function createGameEngine(
       const elapsed = state.elapsed + delta
       if (elapsed >= STAGE_CLEAR_DURATION) {
         hasTap = false
-        if (state.stage >= 8) {
+        if (state.stage >= stageCount) {
           setState({ type: 'GAME_CLEAR', score: score.total, stage: state.stage })
         } else {
           powerUpCanAcceptTap = !touch.active
-          setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generateOptions(state.stage, player.weaponLevel) })
+          setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generateOptions(state.stage, player.weaponLevel, mode) })
         }
       } else {
         setState({ ...state, elapsed })
@@ -440,12 +422,12 @@ export function createGameEngine(
     ctx.restore()
 
     if (state.type === 'BOSS_APPEARING') {
-      ctx.fillStyle = 'rgba(170,0,255,0.3)'
+      ctx.fillStyle = bossLabel === 'BOSS!' ? 'rgba(170,0,255,0.3)' : 'rgba(255,34,102,0.35)'
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
       ctx.fillStyle = '#FFFFFF'
       ctx.font = 'bold 36px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText('BOSS!', CANVAS_CX, 422)
+      ctx.fillText(bossLabel, CANVAS_CX, 422)
     }
 
     if (state.type === 'STAGE_CLEAR') {
@@ -456,7 +438,7 @@ export function createGameEngine(
       ctx.textAlign = 'center'
       ctx.fillText('STAGE CLEAR!', CANVAS_CX, 400)
       ctx.font = '24px sans-serif'
-      ctx.fillText(`BONUS +${state.stage * 100}`, CANVAS_CX, 450)
+      ctx.fillText(`BONUS +${getStageClearBonus(state.stage, mode)}`, CANVAS_CX, 450)
     }
 
     if (state.type === 'POWER_UP_SELECT') {
@@ -491,7 +473,7 @@ export function createGameEngine(
 
     start() {
       hasTap = false
-      player = createPlayer()
+      player = createPlayer(mode)
       score = createScoreState(score.highScore)
       killCounts = createKillCounts()
       startStage(1)

@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app'
 import { getFirestore, Timestamp } from 'firebase-admin/firestore'
+import type { LeaderboardBoard } from './leaderboard'
 
 function initFirebase() {
   if (getApps().length === 0) {
@@ -20,11 +21,16 @@ export interface LeaderboardEntry {
 }
 
 // 環境に応じてコレクションを切り替える (本番は 'scores', 開発・プレビューは 'scores_dev')
-const COLLECTION_NAME = process.env.VERCEL_ENV === 'production' ? 'scores' : 'scores_dev'
+const ENV_SUFFIX = process.env.VERCEL_ENV === 'production' ? '' : '_dev'
 
-export async function getTopScores(n = 20): Promise<LeaderboardEntry[]> {
+function collectionName(board: LeaderboardBoard): string {
+  const base = board === 'extra' ? 'scores_extra' : 'scores'
+  return base + ENV_SUFFIX
+}
+
+export async function getTopScores(n = 20, board: LeaderboardBoard = 'normal'): Promise<LeaderboardEntry[]> {
   const db = initFirebase()
-  const snap = await db.collection(COLLECTION_NAME).orderBy('score', 'desc').limit(n).get()
+  const snap = await db.collection(collectionName(board)).orderBy('score', 'desc').limit(n).get()
   return snap.docs.map(doc => {
     const d = doc.data()
     const ts = d.createdAt instanceof Timestamp ? d.createdAt.toMillis() : undefined
@@ -32,15 +38,15 @@ export async function getTopScores(n = 20): Promise<LeaderboardEntry[]> {
   })
 }
 
-export async function addScore(entry: LeaderboardEntry): Promise<{ rank: number }> {
+export async function addScore(entry: LeaderboardEntry, board: LeaderboardBoard = 'normal'): Promise<{ rank: number }> {
   const db = initFirebase()
-  await db.collection(COLLECTION_NAME).add({
+  await db.collection(collectionName(board)).add({
     name: entry.name,
     score: entry.score,
     stage: entry.stage,
     createdAt: Timestamp.now(),
   })
-  const top100 = await getTopScores(100)
+  const top100 = await getTopScores(100, board)
   const rank = top100.filter(e => e.score > entry.score).length + 1
   return { rank }
 }

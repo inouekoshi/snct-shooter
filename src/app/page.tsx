@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { loadHighScore } from '@/lib/game/score'
+import { loadHighScore, isExtraUnlocked } from '@/lib/game/score'
 import RotatePrompt from '@/components/RotatePrompt'
 import Leaderboard from '@/components/Leaderboard'
 import StatsModal from '@/components/StatsModal'
@@ -10,12 +10,16 @@ import StatsModal from '@/components/StatsModal'
 export default function StartPage() {
   const router = useRouter()
   const [highScore, setHighScore] = useState(0)
+  const [extraUnlocked, setExtraUnlocked] = useState(false)
+  const [extraHighScore, setExtraHighScore] = useState(0)
   const [scale, setScale] = useState(1)
   const [showRanking, setShowRanking] = useState(false)
   const [showStats, setShowStats] = useState(false)
 
   useEffect(() => {
     setHighScore(loadHighScore())
+    setExtraUnlocked(isExtraUnlocked())
+    setExtraHighScore(loadHighScore('EXTRA'))
     const update = () => setScale(Math.min(1, window.innerHeight / 844))
     update()
     window.addEventListener('resize', update)
@@ -101,6 +105,45 @@ export default function StartPage() {
               NORMAL<br/><span style={{fontSize: '12px', color: '#666'}}>標準難易度</span>
             </button>
           </div>
+          {extraUnlocked ? (
+            <button
+              onClick={() => router.push('/game?mode=extra')}
+              style={{
+                padding: '12px 20px',
+                background: '#FF2266',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                fontFamily: 'monospace',
+                cursor: 'pointer',
+                letterSpacing: '1px',
+                width: '296px',
+              }}
+            >
+              EXTRA<br/>
+              <span style={{ fontSize: '12px', color: '#FFD0DC' }}>
+                {extraHighScore > 0 ? `BEST ${extraHighScore.toLocaleString()}` : '全3ステージの高難度モード'}
+              </span>
+            </button>
+          ) : (
+            <div
+              style={{
+                padding: '12px 20px',
+                border: '2px dashed #442233',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#664455',
+                textAlign: 'center',
+                width: '296px',
+                boxSizing: 'border-box',
+              }}
+            >
+              🔒 EXTRA<br/>
+              <span style={{ fontSize: '12px' }}>NORMALをクリアで解禁</span>
+            </div>
+          )}
           <button
             onClick={() => setShowRanking(true)}
             style={{

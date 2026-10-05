@@ -38,6 +38,9 @@ export default function HUD({ score, lives, stage, mode }: HUDProps) {
         {mode === 'EASY' && (
           <div style={{ color: '#00CC88', fontSize: '12px', marginTop: '4px', textShadow: 'none' }}>EASY MODE</div>
         )}
+        {mode === 'EXTRA' && (
+          <div style={{ color: '#FF2266', fontSize: '12px', marginTop: '4px', textShadow: 'none' }}>EXTRA MODE</div>
+        )}
       </div>
       <div style={{ textAlign: 'right' }}>
         <div>LIVES</div>
