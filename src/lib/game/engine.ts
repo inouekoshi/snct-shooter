@@ -66,7 +66,7 @@ function generateOptions(stage: number, weaponLevel: number): [PowerUpOption, Po
     : { kind: 'HP', label: 'HP +1', sub: '残機を1回復' }
   const candidates: PowerUpOption[] = [
     { kind: 'FIRE_RATE', label: '連射強化', sub: '発射間隔 -30ms' },
-    { kind: 'BULLET_SPEED', label: '弾速強化', sub: '弾速 +20%' },
+    { kind: 'BULLET_SPEED', label: '弾速強化', sub: '弾速 +120px/秒' },
   ]
   
   let right: PowerUpOption;
