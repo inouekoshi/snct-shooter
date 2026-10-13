@@ -17,7 +17,7 @@ import {
 import {
   updateBullets, removeOffscreenBullets, renderBullets, type Bullet,
 } from './bullet'
-import { circlesOverlap, applyPlayerBulletHits } from './collision'
+import { circlesOverlap, applyPlayerBulletHits, findTouchedEnemies } from './collision'
 import {
   getDifficulty, getStageCount, getStageClearBonus, type BossVariant, type DifficultyMode,
 } from './difficulty'
@@ -258,6 +258,16 @@ export function createGameEngine(
           player.invincibleTimer = BOSS_APPEARING_DURATION + 200
           return
         }
+      }
+
+      const collected = findTouchedEnemies(enemies, player.x, player.y, PLAYER_RADIUS, 'heal')
+      for (const e of collected) {
+        explodeEnemy(e)
+        player.lives += 1
+        killCounts.heal++
+      }
+      if (collected.length > 0) {
+        enemies = enemies.filter((e) => !collected.includes(e))
       }
 
       if (!isPlayerInvincible(player)) {

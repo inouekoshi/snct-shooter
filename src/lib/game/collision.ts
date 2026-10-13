@@ -32,3 +32,13 @@ export function applyPlayerBulletHits(bullets: Bullet[], enemies: Enemy[]): Bull
   }
   return remaining
 }
+
+export function findTouchedEnemies(
+  enemies: Enemy[],
+  x: number,
+  y: number,
+  radius: number,
+  kind: Enemy['kind']
+): Enemy[] {
+  return enemies.filter((e) => e.kind === kind && circlesOverlap(e.x, e.y, e.radius, x, y, radius))
+}

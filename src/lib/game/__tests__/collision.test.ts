@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { circlesOverlap, applyPlayerBulletHits } from '../collision'
+import { circlesOverlap, applyPlayerBulletHits, findTouchedEnemies } from '../collision'
 import { createPlayerBullet, createPlayerLaser, createEnemyBullet, LASER_DAMAGE } from '../bullet'
-import { createAttackEnemy } from '../enemy'
+import { createAttackEnemy, createHealEnemy } from '../enemy'
 import { getDifficulty } from '../difficulty'
 
 describe('circlesOverlap', () => {
@@ -73,5 +73,27 @@ describe('applyPlayerBulletHits', () => {
     applyPlayerBulletHits([laser], [e])
     applyPlayerBulletHits([laser], [e])
     expect(e.hp).toBe(30 - LASER_DAMAGE)
+  })
+})
+
+describe('findTouchedEnemies', () => {
+  const place = <T extends { x: number; y: number }>(e: T, x: number, y: number): T => {
+    e.x = x
+    e.y = y
+    return e
+  }
+
+  it('自機に触れている指定種類の敵だけを返す', () => {
+    const touchedHeal = place(createHealEnemy(), 200, 700)
+    const farHeal = place(createHealEnemy(), 200, 400)
+    const touchedAttack = place(createAttackEnemy(getDifficulty(1)), 200, 700)
+    const result = findTouchedEnemies([touchedHeal, farHeal, touchedAttack], 205, 705, 12, 'heal')
+    expect(result).toEqual([touchedHeal])
+  })
+
+  it('回復敵の半径14pxと自機の半径12pxの和より離れていれば触れていない', () => {
+    const heal = place(createHealEnemy(), 0, 0)
+    expect(findTouchedEnemies([heal], 25.9, 0, 12, 'heal')).toHaveLength(1)
+    expect(findTouchedEnemies([heal], 26, 0, 12, 'heal')).toHaveLength(0)
   })
 })
