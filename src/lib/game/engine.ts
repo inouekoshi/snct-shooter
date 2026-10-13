@@ -29,15 +29,19 @@ import {
   renderBossAppearing, renderStageClear, renderPowerUpSelect, renderCountdown,
 } from './overlays'
 import { CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_CENTER_X } from './constants'
+import { createSeededRng, createRandomSeed, type Rng } from './random'
 
 const BOSS_APPEARING_DURATION = 1500
 const STAGE_CLEAR_DURATION = 2000
+const HEAL_SPAWN_MIN_INTERVAL = 15000
+const HEAL_SPAWN_INTERVAL_RANGE = 10000
 
 export interface GameEngine {
   state: GameState
   score: ScoreState
   lives: number
-  start: () => void
+  seed: number
+  start: (seed?: number) => void
   stop: () => void
   pause: () => void
   resume: () => void
@@ -74,6 +78,8 @@ export function createGameEngine(
   let hasTap = false
   let healSpawnTimer = 0
   let powerUpCanAcceptTap = false
+  let seed = 0
+  let rng: Rng = Math.random
 
   function notify(): void {
     onStateChange(state, score)
@@ -89,10 +95,14 @@ export function createGameEngine(
     stageScore = 0
     enemySpawnTimer = 0
     normalsSinceLastAttack = 0
-    healSpawnTimer = 15000 + Math.random() * 10000
+    healSpawnTimer = nextHealSpawnInterval()
     enemies = []
     bullets = []
     setState({ type: 'PLAYING', stage })
+  }
+
+  function nextHealSpawnInterval(): number {
+    return HEAL_SPAWN_MIN_INTERVAL + rng() * HEAL_SPAWN_INTERVAL_RANGE
   }
 
   function explodeEnemy(e: Enemy): void {
@@ -197,18 +207,18 @@ export function createGameEngine(
           enemySpawnTimer = diff.normalEnemyInterval
           const ratio = diff.attackEnemySpawnRatio
           if (ratio > 0 && normalsSinceLastAttack >= ratio) {
-            enemies.push(createAttackEnemy(diff))
+            enemies.push(createAttackEnemy(diff, rng))
             normalsSinceLastAttack = 0
           } else {
-            enemies.push(createNormalEnemy(diff))
+            enemies.push(createNormalEnemy(diff, rng))
             normalsSinceLastAttack++
           }
         }
 
         healSpawnTimer -= delta
         if (healSpawnTimer <= 0) {
-          healSpawnTimer = 15000 + Math.random() * 10000
-          enemies.push(createHealEnemy())
+          healSpawnTimer = nextHealSpawnInterval()
+          enemies.push(createHealEnemy(rng))
         }
       }
 
@@ -319,7 +329,7 @@ export function createGameEngine(
           setState({ type: 'GAME_CLEAR', score: score.total, stage: state.stage })
         } else {
           powerUpCanAcceptTap = !touch.active
-          setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generatePowerUpOptions(state.stage, player.weaponLevel, mode) })
+          setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generatePowerUpOptions(state.stage, player.weaponLevel, mode, rng) })
         }
       } else {
         setState({ ...state, elapsed })
@@ -357,8 +367,11 @@ export function createGameEngine(
     get state() { return state },
     get score() { return score },
     get lives() { return player.lives },
+    get seed() { return seed },
 
-    start() {
+    start(initialSeed = createRandomSeed()) {
+      seed = initialSeed
+      rng = createSeededRng(seed)
       hasTap = false
       player = createPlayer(mode)
       score = createScoreState(score.highScore)

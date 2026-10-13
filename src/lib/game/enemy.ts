@@ -1,6 +1,7 @@
 import type { BossVariant, DifficultyParams } from './difficulty'
 import { createEnemyBullet, type Bullet } from './bullet'
 import { CANVAS_HEIGHT, CANVAS_CENTER_X, PLAYER_START_Y } from './constants'
+import type { Rng } from './random'
 
 export type EnemyKind = 'normal' | 'attack' | 'boss' | 'heal'
 
@@ -29,14 +30,14 @@ const FAN_TOTAL_DEG = 80
 
 const OFFSCREEN_MARGIN = 76
 
-function randomSpawnX(): number {
-  return 40 + Math.random() * 310
+function randomSpawnX(rng: Rng): number {
+  return 40 + rng() * 310
 }
 
-export function createNormalEnemy(diff: DifficultyParams): Enemy {
+export function createNormalEnemy(diff: DifficultyParams, rng: Rng = Math.random): Enemy {
   return {
     kind: 'normal',
-    x: randomSpawnX(),
+    x: randomSpawnX(rng),
     y: -20,
     radius: 15,
     hp: 1,
@@ -52,30 +53,30 @@ export function createNormalEnemy(diff: DifficultyParams): Enemy {
   }
 }
 
-export function createAttackEnemy(diff: DifficultyParams): Enemy {
-  const zigzag = Math.random() < 0.4
+export function createAttackEnemy(diff: DifficultyParams, rng: Rng = Math.random): Enemy {
+  const zigzag = rng() < 0.4
   return {
     kind: 'attack',
-    x: randomSpawnX(),
+    x: randomSpawnX(rng),
     y: -20,
     radius: 20,
     hp: diff.attackEnemyHp,
     maxHp: diff.attackEnemyHp,
     speed: diff.attackEnemySpeed,
-    fireTimer: diff.attackEnemyFireInterval * Math.random(),
+    fireTimer: diff.attackEnemyFireInterval * rng(),
     fireInterval: diff.attackEnemyFireInterval,
     bulletSpeed: diff.attackEnemyBulletSpeed,
     score: 30,
-    vx: zigzag ? (Math.random() < 0.5 ? 1 : -1) * 70 : 0,
+    vx: zigzag ? (rng() < 0.5 ? 1 : -1) * 70 : 0,
     movePhase: 0,
     shotCount: zigzag ? diff.attackEnemyShots.zigzag : diff.attackEnemyShots.straight,
   }
 }
 
-export function createHealEnemy(): Enemy {
+export function createHealEnemy(rng: Rng = Math.random): Enemy {
   return {
     kind: 'heal',
-    x: randomSpawnX(),
+    x: randomSpawnX(rng),
     y: -20,
     radius: 14,
     hp: 1,

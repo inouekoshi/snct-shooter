@@ -28,8 +28,10 @@ src/
 │   └── buttonStyles.ts       # 共通ボタンスタイル
 ├── lib/
 │   ├── firestore.ts          # Firebase Admin SDK の初期化とFirestore操作 (サーバーサイド専用)
-│   ├── leaderboard.ts        # ランキング種別 (normal / extra)・エントリ型・ステージ別スコア上限
+│   ├── leaderboard.ts        # ランキング種別・エントリ型・スコア上限・名前チェック・順位表示・API呼び出し
+│   ├── ngWords.ts            # 名前の NG ワード判定 (サーバーサイドのみ)
 │   ├── playerName.ts         # プレイヤー名の localStorage 保存
+│   ├── __tests__/            # leaderboard・ngWords のユニットテスト
 │   └── game/                 # ゲームのコアロジック群
 │       ├── engine.ts         # ゲームループ・状態遷移・スポーン・当たり処理の統括
 │       ├── state.ts          # State Machine の型定義
@@ -45,6 +47,7 @@ src/
 │       ├── overlays.ts       # BOSS / STAGE CLEAR / POWER UP / カウントダウンの描画
 │       ├── score.ts          # ハイスコアと EXTRA 解禁状態の localStorage 保存
 │       ├── stats.ts          # プレイ履歴・統計の localStorage 保存
+│       ├── random.ts         # シード付き乱数生成器 (mulberry32)
 │       ├── touch.ts          # タッチ入力イベントバッファ
 │       └── __tests__/        # Vitest のユニットテスト
 └── public/
@@ -99,6 +102,7 @@ Reactの合成イベント (SyntheticEvent) ではなく、ネイティブの `T
 
 - **ロジック**（Canvas に依存しない純粋な関数。`__tests__/` でユニットテスト済み）: `difficulty.ts`、`powerup.ts`、`collision.ts` の命中処理、`player.ts` の発射パターン、`effects.ts` のパーティクル・揺れの更新
 - **描画**: 各モジュールの `render*` 関数と、画面全体に重ねる演出をまとめた `overlays.ts`
+- **乱数**: 展開に影響する乱数（敵の出現位置・攻撃敵のジグザグ判定と射撃タイミング・回復敵の出現間隔・パワーアップの選択肢）は、`random.ts` のシード付き乱数生成器から取る。`engine.start(seed)` でシードを指定でき、省略時はランダムなシードになる（`engine.seed` で参照可能）。見た目だけの乱数（背景の星・破片・画面揺れ）は `Math.random` のまま。スコアアタック・ゴーストに向けた下準備で、完全な再現には更新間隔の固定も必要（[#21](https://github.com/inouekoshi/snct-shooter/issues/21)）
 - **保存**: `score.ts`（ハイスコア・EXTRA 解禁）、`stats.ts`（統計）、`lib/playerName.ts`（名前）。いずれも localStorage が使えない環境では例外を出さずに無視する
 
 ### 2.5 衝突判定
