@@ -109,7 +109,7 @@ Reactの合成イベント (SyntheticEvent) ではなく、ネイティブの `T
 
 ## 3. PWA (Progressive Web App) 対応
 iOS/Android 双方でのオフライン動作およびアプリライクな体験を提供するために `Serwist` を導入しています。
-- **Service Worker**: `app/sw.ts` により、リソースのキャッシュを行います。
+- **Service Worker**: `app/sw.ts` により、リソースのキャッシュを行います。`@serwist/next` の `defaultCache` は `/api/*` の GET もキャッシュするため、その前に `/api/*` を `NetworkOnly` にするルールを置き、ランキングが古いまま表示されないようにしています。
 - `layout.tsx` レベルで `env(safe-area-inset-*)` を考慮し、ノッチ付きディスプレイにおいてもゲーム領域が隠れないよう設計されています。
 
 ## 4. オンラインリーダーボード
