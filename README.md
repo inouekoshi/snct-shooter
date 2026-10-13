@@ -123,4 +123,4 @@
 
 ## 📄 ライセンス
 
-ライセンスは未確定です（[#7](https://github.com/inouekoshi/snct-shooter/issues/7) で検討中）。
+[MIT License](LICENSE) で公開しています。
