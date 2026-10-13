@@ -10,6 +10,7 @@ import StatsModal from '@/components/StatsModal'
 export default function StartPage() {
   const router = useRouter()
   const [highScore, setHighScore] = useState(0)
+  const [easyHighScore, setEasyHighScore] = useState(0)
   const [extraUnlocked, setExtraUnlocked] = useState(false)
   const [extraHighScore, setExtraHighScore] = useState(0)
   const [scale, setScale] = useState(1)
@@ -18,6 +19,7 @@ export default function StartPage() {
 
   useEffect(() => {
     setHighScore(loadHighScore())
+    setEasyHighScore(loadHighScore('EASY'))
     setExtraUnlocked(isExtraUnlocked())
     setExtraHighScore(loadHighScore('EXTRA'))
     const update = () => setScale(Math.min(1, window.innerHeight / 844))
@@ -83,7 +85,10 @@ export default function StartPage() {
                 maxWidth: '140px',
               }}
             >
-              EASY<br/><span style={{fontSize: '12px', color: '#888'}}>初心者向け</span>
+              EASY<br/>
+              <span style={{ fontSize: '12px', color: '#888' }}>
+                {easyHighScore > 0 ? `BEST ${easyHighScore.toLocaleString()}` : '初心者向け'}
+              </span>
             </button>
             <button
               onClick={() => router.push('/game?mode=normal')}

@@ -202,7 +202,8 @@ Chromeの恐竜ゲームのように、軽量・シンプルで誰でも即プ�
 - **累計スコア**: ゲーム全体通算（ハイスコアの比較対象）
 - **ステージ内スコア**: ステージ開始時にリセット（ボス出現トリガー用）
 - ステージクリアボーナスは `STAGE_CLEAR` 状態へ遷移した瞬間に累計スコアへ加算する
-- ハイスコアは `localStorage`（キー `shooting-highscore`）に保存（使用不可時はセッション内のみ表示）
+- ハイスコアは難易度ごとに `localStorage` に保存する（NORMAL: `shooting-highscore` / EASY: `shooting-highscore-easy` / EXTRA: `shooting-highscore-extra`）。使用不可時はセッション内のみ表示
+- スタート画面のタイトル下には NORMAL のハイスコアを表示し、EASY・EXTRA のハイスコアは各ボタンに表示する
 - ゲームオーバー・ゲームクリア時にプレイ記録（スコア・到達ステージ・敵種別ごとの撃破数）を `localStorage`（キー `shooter-stats`）に保存し、スタート画面の統計モーダルで表示する
 
 ### 2.8 パワーアップシステム

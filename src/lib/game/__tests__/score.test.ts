@@ -28,11 +28,13 @@ describe('score', () => {
     expect(loadHighScore()).toBe(5000)
   })
 
-  it('EXTRAのハイスコアは別に保存される', () => {
+  it('EASY・NORMAL・EXTRAのハイスコアはそれぞれ別に保存される', () => {
     saveHighScore(1000)
+    saveHighScore(3000, 'EASY')
     saveHighScore(9000, 'EXTRA')
     expect(loadHighScore()).toBe(1000)
-    expect(loadHighScore('EASY')).toBe(1000)
+    expect(loadHighScore('NORMAL')).toBe(1000)
+    expect(loadHighScore('EASY')).toBe(3000)
     expect(loadHighScore('EXTRA')).toBe(9000)
   })
 

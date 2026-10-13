@@ -1,6 +1,7 @@
 import type { DifficultyMode } from './difficulty'
 
 const STORAGE_KEY = 'shooting-highscore'
+const EASY_STORAGE_KEY = 'shooting-highscore-easy'
 const EXTRA_STORAGE_KEY = 'shooting-highscore-extra'
 const EXTRA_UNLOCKED_KEY = 'shooter-extra-unlocked'
 
@@ -15,7 +16,9 @@ export function createScoreState(highScore: number): ScoreState {
 }
 
 function highScoreKey(mode: DifficultyMode): string {
-  return mode === 'EXTRA' ? EXTRA_STORAGE_KEY : STORAGE_KEY
+  if (mode === 'EASY') return EASY_STORAGE_KEY
+  if (mode === 'EXTRA') return EXTRA_STORAGE_KEY
+  return STORAGE_KEY
 }
 
 export function loadHighScore(mode: DifficultyMode = 'NORMAL'): number {
