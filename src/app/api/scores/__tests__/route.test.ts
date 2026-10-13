@@ -89,6 +89,20 @@ describe('POST /api/scores', () => {
     expect(addScore).not.toHaveBeenCalled()
   })
 
+  it('NGワードを含む名前は400で inappropriate name を返す', async () => {
+    const res = await post({ name: 'チンコ', score: 100, stage: 1 })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'inappropriate name' })
+    expect(addScore).not.toHaveBeenCalled()
+  })
+
+  it('環境変数 NG_WORDS で追加したNGワードも弾く', async () => {
+    vi.stubEnv('NG_WORDS', 'ほげ,ふが')
+    expect((await post({ name: 'ほげたろう', score: 100, stage: 1 })).status).toBe(400)
+    vi.unstubAllEnvs()
+    expect((await post({ name: 'ほげたろう', score: 100, stage: 1 })).status).toBe(200)
+  })
+
   it('日本語10文字の名前は受け付ける', async () => {
     expect((await post({ name: 'ひらがなカタカナ漢字', score: 100, stage: 1 })).status).toBe(200)
   })

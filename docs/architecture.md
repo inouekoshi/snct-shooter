@@ -151,6 +151,7 @@ scores / scores_extra (または *_dev)/{auto-id}
 `src/app/api/scores/route.ts` でリクエストを以下の観点で検証する。
 
 - **名前**: 正規表現 `/^[\p{L}\p{N}\s\-_.]{1,10}$/u` に一致するUnicode文字・数字・一部記号のみ。判定は `src/lib/leaderboard.ts` の `isValidPlayerName` をクライアント（入力中の案内）とサーバーで共有する
+- **NG ワード**: `src/lib/ngWords.ts` の `containsNgWord` で不適切な名前を弾く（サーバーのみ）。環境変数 `NG_WORDS` で語を追加できる。詳細は [spec.md §2.11](spec.md#211-オンラインリーダーボード)
 - **スコア**: 0以上9,999,999以下の整数
 - **モード**: `normal` / `extra`（省略時は `normal`）以外は400エラー
 - **ステージ**: NORMAL は1〜8、EXTRA は1〜3の整数
@@ -163,6 +164,11 @@ scores / scores_extra (または *_dev)/{auto-id}
 
 ### 4.6 環境変数
 Firebase Admin SDK のサービスアカウントキーは `FIREBASE_SERVICE_ACCOUNT_KEY` という環境変数（1行JSON）で提供する。`.env.local`（ローカル開発）と Vercel の Environment Variables（Production / Preview / Development）に同じ値を設定する。
+
+| 環境変数 | 必須 | 内容 |
+|---|---|---|
+| `FIREBASE_SERVICE_ACCOUNT_KEY` | ランキングを使うなら必須 | Firebase Admin SDK のサービスアカウントキー（1行JSON） |
+| `NG_WORDS` | 任意 | 名前の NG ワードを追加する（カンマ区切り、部分一致）。イベント中に新しい荒らしが出たときの追加用 |
 
 ### 4.7 UI コンポーネント
 `src/components/Leaderboard.tsx` は固定の論理解像度（390×844）上にオーバーレイ表示するコンポーネント。NORMAL / EXTRA をタブで切り替えられる。ホーム画面の RANKING ボタンと、結果画面（`ResultScreen.tsx`）の「ランキングを見る」ボタンから呼び出される。自分のスコアは黄色（`#FFFF00`）でハイライトされる。
