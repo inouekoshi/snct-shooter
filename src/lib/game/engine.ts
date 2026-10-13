@@ -394,6 +394,12 @@ export function createGameEngine(
     },
 
     pause() {
+      if (state.type === 'COUNTDOWN') {
+        cancelAnimationFrame(animId)
+        running = false
+        setState({ type: 'PAUSED', resumeTo: state.resumeTo })
+        return
+      }
       if (
         state.type === 'PLAYING' ||
         state.type === 'BOSS_APPEARING' ||
