@@ -54,7 +54,7 @@ export async function fetchLeaderboard(board: LeaderboardBoard): Promise<Leaderb
 
 export type SubmitScoreResult =
   | { ok: true; rank: number; id: string }
-  | { ok: false; reason: 'invalid_name' | 'inappropriate_name' | 'failed' }
+  | { ok: false; reason: 'invalid_name' | 'inappropriate_name' | 'disabled' | 'failed' }
 
 export async function submitLeaderboardScore(
   entry: { name: string; score: number; stage: number },
@@ -70,6 +70,7 @@ export async function submitLeaderboardScore(
     if (res.ok && data.ok) return { ok: true, rank: data.rank, id: data.id }
     if (data.error === 'invalid name') return { ok: false, reason: 'invalid_name' }
     if (data.error === 'inappropriate name') return { ok: false, reason: 'inappropriate_name' }
+    if (data.error === 'submission disabled') return { ok: false, reason: 'disabled' }
     return { ok: false, reason: 'failed' }
   } catch {
     return { ok: false, reason: 'failed' }

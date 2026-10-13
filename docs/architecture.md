@@ -173,6 +173,7 @@ Firebase Admin SDK のサービスアカウントキーは `FIREBASE_SERVICE_ACC
 |---|---|---|
 | `FIREBASE_SERVICE_ACCOUNT_KEY` | ランキングを使うなら必須 | Firebase Admin SDK のサービスアカウントキー（1行JSON） |
 | `NG_WORDS` | 任意 | 名前の NG ワードを追加する（カンマ区切り、部分一致）。イベント中に新しい荒らしが出たときの追加用 |
+| `SCORES_SUBMISSION_DISABLED` | 任意 | `1` にするとスコア投稿を止める（POST が `{ error: 'submission disabled' }` を503で返し、画面に「現在スコアの投稿を停止しています」と出る）。荒らされたときの緊急停止用。ランキングの閲覧はそのまま |
 
 ### 4.7 UI コンポーネント
 `src/components/Leaderboard.tsx` は固定の論理解像度（390×844）上にオーバーレイ表示するコンポーネント。NORMAL / EXTRA をタブで切り替えられる。ホーム画面の RANKING ボタンと、結果画面（`ResultScreen.tsx`）の「ランキングを見る」ボタンから呼び出される。自分のスコアは黄色（`#FFFF00`）でハイライトされる。

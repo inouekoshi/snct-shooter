@@ -126,6 +126,15 @@ describe('POST /api/scores', () => {
     expect((await post({ name: 'a', score: 28601, stage: 8 })).status).toBe(400)
   })
 
+  it('SCORES_SUBMISSION_DISABLED=1 なら保存せず503を返す', async () => {
+    vi.stubEnv('SCORES_SUBMISSION_DISABLED', '1')
+    const res = await post({ name: 'a', score: 100, stage: 1 })
+    vi.unstubAllEnvs()
+    expect(res.status).toBe(503)
+    expect(await res.json()).toEqual({ error: 'submission disabled' })
+    expect(addScore).not.toHaveBeenCalled()
+  })
+
   it('保存に失敗したら500を返す', async () => {
     vi.mocked(addScore).mockRejectedValue(new Error('down'))
     expect((await post({ name: 'a', score: 100, stage: 1 })).status).toBe(500)

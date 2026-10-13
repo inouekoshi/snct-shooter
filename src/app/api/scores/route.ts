@@ -19,6 +19,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (process.env.SCORES_SUBMISSION_DISABLED === '1') {
+    return NextResponse.json({ error: 'submission disabled' }, { status: 503 })
+  }
   try {
     const body = await req.json()
     const { name, score, stage, mode } = body

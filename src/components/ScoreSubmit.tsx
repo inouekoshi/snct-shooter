@@ -7,7 +7,7 @@ import {
 import { loadPlayerName, savePlayerName } from '@/lib/playerName'
 import { BTN_PRIMARY, BTN_OUTLINE } from './buttonStyles'
 
-type SubmitState = 'idle' | 'inputting' | 'submitting' | 'done' | 'error'
+type SubmitState = 'idle' | 'inputting' | 'submitting' | 'done' | 'error' | 'disabled'
 
 interface Props {
   score: number
@@ -44,6 +44,8 @@ export default function ScoreSubmit({ score, stage, board, onSubmitted, onShowLe
       onSubmitted(result.id)
     } else if (result.reason === 'failed') {
       setSubmitState('error')
+    } else if (result.reason === 'disabled') {
+      setSubmitState('disabled')
     } else {
       setRejectedReason(result.reason)
       setSubmitState('inputting')
@@ -130,6 +132,9 @@ export default function ScoreSubmit({ score, stage, board, onSubmitted, onShowLe
         </button>
       </div>
     )
+  }
+  if (submitState === 'disabled') {
+    return <p style={{ fontSize: '14px', color: '#888' }}>現在スコアの投稿を停止しています</p>
   }
   return (
     <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>

@@ -71,6 +71,11 @@ describe('submitLeaderboardScore', () => {
     await expect(submit()).resolves.toEqual({ ok: false, reason: 'inappropriate_name' })
   })
 
+  it('投稿停止中なら disabled', async () => {
+    mockFetch(503, { error: 'submission disabled' })
+    await expect(submit()).resolves.toEqual({ ok: false, reason: 'disabled' })
+  })
+
   it('サーバーエラーなら failed', async () => {
     mockFetch(500, { error: 'Failed to submit score' })
     await expect(submit()).resolves.toEqual({ ok: false, reason: 'failed' })
