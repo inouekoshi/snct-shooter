@@ -24,6 +24,7 @@
 - **オンラインランキング**: Firebase Firestore + Firebase Admin SDK（`/api/scores` 経由のみ。クライアントから直接触らない）
 - **PWA**: Serwist（next-pwa は App Router 非互換のため不採用）。`/api/*` はキャッシュしない
 - **テスト**: Vitest（`npm test`）
+- **Lint**: ESLint（`next/core-web-vitals`、`npm run lint`）
 - **デプロイ**: Vercel
 
 ## 開発ワークフロー
@@ -35,7 +36,7 @@
 - `dev`: 開発用。push すると Vercel のプレビュー環境（固定URL、README 参照）に自動デプロイされる
 - Firestore のコレクションは `VERCEL_ENV` で自動切替（本番 `scores`・`scores_extra` / それ以外は末尾に `_dev`）
 - 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` が必要（ローカルは `.env.local`）
-- コミット前に `npm test` と `npm run build` が通ることを確認する
+- コミット前に `npm test`・`npm run lint`・`npm run build` が通ることを確認する
 
 ## ディレクトリ構成
 
