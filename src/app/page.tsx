@@ -204,7 +204,29 @@ export default function StartPage() {
   )
 }
 
+interface BackgroundStar {
+  size: number
+  left: number
+  top: number
+  opacity: number
+}
+
+function createBackgroundStars(count: number): BackgroundStar[] {
+  return Array.from({ length: count }, () => ({
+    size: 1 + Math.random() * 2,
+    left: Math.random() * 100,
+    top: Math.random() * 100,
+    opacity: 0.3 + Math.random() * 0.7,
+  }))
+}
+
 function StarBackground() {
+  const [stars, setStars] = useState<BackgroundStar[]>([])
+
+  useEffect(() => {
+    setStars(createBackgroundStars(60))
+  }, [])
+
   return (
     <div
       style={{
@@ -214,18 +236,18 @@ function StarBackground() {
         pointerEvents: 'none',
       }}
     >
-      {Array.from({ length: 60 }, (_, i) => (
+      {stars.map((star, i) => (
         <div
           key={i}
           style={{
             position: 'absolute',
-            width: `${1 + Math.random() * 2}px`,
-            height: `${1 + Math.random() * 2}px`,
+            width: `${star.size}px`,
+            height: `${star.size}px`,
             background: '#FFF',
             borderRadius: '50%',
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            opacity: 0.3 + Math.random() * 0.7,
+            left: `${star.left}%`,
+            top: `${star.top}%`,
+            opacity: star.opacity,
           }}
         />
       ))}
