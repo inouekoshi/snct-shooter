@@ -148,7 +148,7 @@ scores / scores_extra (または *_dev)/{auto-id}
 
 | メソッド | パス | 機能 |
 |---|---|---|
-| GET | `/api/scores?mode=normal\|extra` | トップ20のスコアを取得（`mode` 省略時は NORMAL）。各エントリにドキュメントID（`id`）を含む。`export const revalidate = 10` で Edge Cache を10秒利用しFirestore読み取り回数を削減 |
+| GET | `/api/scores?mode=normal\|extra` | トップ20のスコアを取得（`mode` 省略時は NORMAL）。各エントリにドキュメントID（`id`）を含む。成功時は `Cache-Control: public, s-maxage=10, stale-while-revalidate=50` を付け、Vercel の CDN で10秒キャッシュして Firestore の読み取り回数を減らす（クエリごとに別キャッシュ）。投稿直後にランキングを開くときは `&after=<ドキュメントID>` を付けてキャッシュを外し、自分のスコアを必ず表示する |
 | POST | `/api/scores` | スコアを投稿（ボディ: `{ name, score, stage, mode }`、`mode` 省略時は NORMAL）。バリデーション通過後にFirestoreへ書き込み、登録された順位とドキュメントID（`{ ok: true, rank, id }`）を返却。名前が不正なら `{ error: 'invalid name' }` を400で返す |
 
 ### 4.4 サーバーサイドバリデーション（チート対策）

@@ -3,7 +3,7 @@ import { getTopScores, addScore } from '@/lib/firestore'
 import { SCORE_LIMITS, parseBoard, maxStageOf, isValidPlayerName } from '@/lib/leaderboard'
 import { containsNgWord, parseNgWords } from '@/lib/ngWords'
 
-export const revalidate = 10
+const LEADERBOARD_CACHE_CONTROL = 'public, s-maxage=10, stale-while-revalidate=50'
 
 export async function GET(req: NextRequest) {
   const board = parseBoard(req.nextUrl.searchParams.get('mode') ?? undefined)
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   }
   try {
     const entries = await getTopScores(20, board)
-    return NextResponse.json({ entries })
+    return NextResponse.json({ entries }, { headers: { 'Cache-Control': LEADERBOARD_CACHE_CONTROL } })
   } catch {
     return NextResponse.json({ error: 'Failed to fetch scores' }, { status: 500 })
   }

@@ -331,7 +331,7 @@ Firestore コレクション（ランキングの種類と環境ごとに分離�
 
 | メソッド | パス | 機能 |
 |---|---|---|
-| GET | `/api/scores?mode=normal\|extra` | トップ20を取得（`mode` 省略時は NORMAL）。`export const revalidate = 10` で Edge Cache を10秒間利用 |
+| GET | `/api/scores?mode=normal\|extra` | トップ20を取得（`mode` 省略時は NORMAL）。Vercel の CDN で10秒キャッシュ（`Cache-Control: s-maxage=10`）。投稿直後の表示だけはキャッシュを外す |
 | POST | `/api/scores` | スコア投稿。リクエストボディ: `{ name, score, stage, mode }`（`mode` は `normal` / `extra`、省略時は NORMAL）。レスポンス: `{ ok: true, rank, id }`（`id` は登録したドキュメントID） |
 
 #### バリデーション（サーバーサイド）

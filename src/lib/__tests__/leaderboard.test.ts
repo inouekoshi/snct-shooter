@@ -46,6 +46,12 @@ describe('fetchLeaderboard', () => {
     expect(fn).toHaveBeenCalledWith('/api/scores?mode=extra')
   })
 
+  it('投稿直後はドキュメントIDをクエリに付けてCDNキャッシュを外す', async () => {
+    const fn = mockFetch(200, { entries: [] })
+    await fetchLeaderboard('normal', 'doc/1')
+    expect(fn).toHaveBeenCalledWith('/api/scores?mode=normal&after=doc%2F1')
+  })
+
   it('APIがエラーを返したら例外にする', async () => {
     mockFetch(500, { error: 'Failed to fetch scores' })
     await expect(fetchLeaderboard('normal')).rejects.toThrow()

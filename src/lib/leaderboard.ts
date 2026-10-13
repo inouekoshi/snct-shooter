@@ -45,8 +45,9 @@ export function rankEntries(entries: LeaderboardEntry[]): number[] {
   return ranks
 }
 
-export async function fetchLeaderboard(board: LeaderboardBoard): Promise<LeaderboardEntry[]> {
-  const res = await fetch(`/api/scores?mode=${board}`)
+export async function fetchLeaderboard(board: LeaderboardBoard, submittedId?: string): Promise<LeaderboardEntry[]> {
+  const query = submittedId ? `mode=${board}&after=${encodeURIComponent(submittedId)}` : `mode=${board}`
+  const res = await fetch(`/api/scores?${query}`)
   if (!res.ok) throw new Error(`Failed to fetch leaderboard: ${res.status}`)
   const data = await res.json()
   return data.entries ?? []

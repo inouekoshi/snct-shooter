@@ -24,7 +24,7 @@ export default function Leaderboard({ highlightId, initialBoard = 'normal', onCl
     let cancelled = false
     setLoading(true)
     setError(false)
-    fetchLeaderboard(board)
+    fetchLeaderboard(board, board === initialBoard ? highlightId : undefined)
       .then(fetched => {
         if (cancelled) return
         setEntries(fetched)
@@ -36,7 +36,7 @@ export default function Leaderboard({ highlightId, initialBoard = 'normal', onCl
         setLoading(false)
       })
     return () => { cancelled = true }
-  }, [board])
+  }, [board, initialBoard, highlightId])
 
   const ranks = rankEntries(entries)
 

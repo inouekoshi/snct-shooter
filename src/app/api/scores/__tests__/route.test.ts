@@ -28,6 +28,12 @@ describe('GET /api/scores', () => {
     expect(getTopScores).toHaveBeenCalledWith(20, 'normal')
   })
 
+  it('成功時はCDNで10秒キャッシュするヘッダーを付ける', async () => {
+    vi.mocked(getTopScores).mockResolvedValue([])
+    const res = await get()
+    expect(res.headers.get('Cache-Control')).toBe('public, s-maxage=10, stale-while-revalidate=50')
+  })
+
   it('mode=extra ならEXTRAランキングを返す', async () => {
     vi.mocked(getTopScores).mockResolvedValue([])
     expect((await get('?mode=extra')).status).toBe(200)
@@ -39,9 +45,11 @@ describe('GET /api/scores', () => {
     expect(getTopScores).not.toHaveBeenCalled()
   })
 
-  it('Firestoreエラー時は500を返す', async () => {
+  it('Firestoreエラー時は500を返し、キャッシュさせない', async () => {
     vi.mocked(getTopScores).mockRejectedValue(new Error('down'))
-    expect((await get()).status).toBe(500)
+    const res = await get()
+    expect(res.status).toBe(500)
+    expect(res.headers.get('Cache-Control')).toBeNull()
   })
 })
 
