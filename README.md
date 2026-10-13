@@ -34,6 +34,7 @@
 - **データ保存（オンライン）**: Firebase Firestore（リーダーボード）+ Firebase Admin SDK（API Routes 経由のみアクセス）
 - **PWA**: Serwist
 - **テスト**: Vitest
+- **Lint / CI**: ESLint・GitHub Actions（テスト・Lint・ビルドを自動実行）
 - **ホスティング**: Vercel（main ブランチ自動デプロイ）
 
 さらに詳しい設計やディレクトリ構成については、アーキテクチャドキュメント [docs/architecture.md](docs/architecture.md) をご覧ください。
@@ -58,6 +59,7 @@
 - スタート画面の `RANKING` ボタンからトップ20を表示できます。NORMAL と EXTRA はタブで切り替えます。
 - ゲームオーバー / クリア時に「スコアを投稿」→ 名前を入力すると、ランキングに登録されます。
 - 入力した名前は次回プレイ時に自動で復元されます。
+- 名前に使えるのは文字・数字・空白と `- _ .` です。不適切な名前は登録できません。
 
 ## 🚀 ローカルでの開発と起動
 

@@ -35,7 +35,7 @@
 - タスクは GitHub Issues で管理（一覧と全体像は `docs/tasks.md`）
 - `dev`: 開発用。push すると Vercel のプレビュー環境（固定URL、README 参照）に自動デプロイされる
 - Firestore のコレクションは `VERCEL_ENV` で自動切替（本番 `scores`・`scores_extra` / それ以外は末尾に `_dev`）
-- 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` が必要（ローカルは `.env.local`）
+- 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` が必要（ローカルは `.env.local`）。任意で `NG_WORDS`（NG ワード追加）・`SCORES_SUBMISSION_DISABLED=1`（投稿の緊急停止）。一覧は `docs/architecture.md` §4.6
 - コミット前に `npm test`・`npm run lint`・`npm run build` が通ることを確認する
 - `dev` / `main` への push と PR では GitHub Actions（`.github/workflows/ci.yml`）が同じ3つを自動実行する
 
@@ -46,7 +46,8 @@
 - `src/app/`: 画面（`page.tsx` スタート、`game/page.tsx` ゲーム）と API（`api/scores/route.ts`）
 - `src/components/`: `GameCanvas`・`HUD`・`ResultScreen`・`ScoreSubmit`・`Leaderboard`・`StatsModal` など
 - `src/lib/game/`: ゲームロジック。`engine.ts` が統括し、難易度（`difficulty.ts`）・パワーアップ（`powerup.ts`）・命中処理（`collision.ts`）・演出（`effects.ts`・`overlays.ts`）などに分割。共通定数は `constants.ts`
-- `src/lib/`: `firestore.ts`（サーバー専用）、`leaderboard.ts`（ランキング種別・スコア上限）、`playerName.ts`
+- `src/lib/`: `firestore.ts`（サーバー専用）、`leaderboard.ts`（ランキング種別・スコア上限・名前チェック・順位表示・API 呼び出し）、`ngWords.ts`（NG ワード判定、サーバー専用）、`playerName.ts`
+- 展開に影響する乱数は `src/lib/game/random.ts` のシード付き乱数から取る（`Math.random` を直接使わない。見た目だけの乱数は除く）
 - テスト: `src/**/__tests__/*.test.ts`
 
 ## 重要な実装メモ
@@ -100,7 +101,8 @@ type GameState =
 - PWA インストール誘導: `beforeinstallprompt` 非対応のため Safari 共有ボタン案内テキストで対応
 
 ### ランキング API のチート対策
-- 名前: 1〜10文字（文字・数字・空白・`-_.`）
+- 名前: 1〜10文字（文字・数字・空白・`-_.`）。判定は `isValidPlayerName` をクライアントとサーバーで共有
+- 名前の NG ワード（`ngWords.ts`）は 400（`inappropriate name`）
 - ステージ別スコア上限（`src/lib/leaderboard.ts` の `SCORE_LIMITS`、NORMAL / EXTRA 別）を超える投稿は 400
 - ゲームバランスを変えたら上限値も見直すこと
 
@@ -118,7 +120,7 @@ type GameState =
 | 移動可能範囲 | Canvas端から 20px パディング | — |
 | 雑魚敵（通常）当たり判定 | 半径 15px | — |
 | 攻撃敵当たり判定 | 半径 20px | — |
-| 回復敵当たり判定 | 半径 14px | — |
+| 回復敵当たり判定 | 半径 14px（撃破または接触で残機+1） | — |
 | ボス当たり判定 | 半径 40px | — |
 | ボスHP（NORMAL） | ステージ1で 450（ステージ毎 +150） | — |
 | ボス弾幕切替 | HP 50% 以下でパターン2、25% 以下でパターン3 | — |
