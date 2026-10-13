@@ -37,6 +37,7 @@
 - Firestore のコレクションは `VERCEL_ENV` で自動切替（本番 `scores`・`scores_extra` / それ以外は末尾に `_dev`）
 - 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` が必要（ローカルは `.env.local`）
 - コミット前に `npm test`・`npm run lint`・`npm run build` が通ることを確認する
+- `dev` / `main` への push と PR では GitHub Actions（`.github/workflows/ci.yml`）が同じ3つを自動実行する
 
 ## ディレクトリ構成
 
