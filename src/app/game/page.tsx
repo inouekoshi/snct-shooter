@@ -54,7 +54,7 @@ function GamePageContent() {
       <RotatePrompt />
       <div style={{ position: 'relative', width: '390px', height: '844px', transform: `scale(${scale})`, transformOrigin: 'top center' }}>
         {!result && canPlay && (
-          <GameCanvas mode={gameMode} onGameOver={handleGameOver} onGameClear={handleGameClear} />
+          <GameCanvas mode={gameMode} onGameOver={handleGameOver} onGameClear={handleGameClear} onQuit={() => router.push('/')} />
         )}
         {result && (
           <ResultScreen

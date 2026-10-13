@@ -245,7 +245,7 @@ Chromeの恐竜ゲームのように、軽量・シンプルで誰でも即プ�
 | `BOSS_FIGHT` | ボス戦中 |
 | `STAGE_CLEAR` | ステージクリア演出中（2秒）。全敵・全弾を即時消去 |
 | `POWER_UP_SELECT` | パワーアップ選択画面。タップで左右どちらかを選択 |
-| `PAUSED` | バックグラウンド移行による自動一時停止 |
+| `PAUSED` | 一時停止（右下の一時停止ボタン、またはバックグラウンド移行で自動）。一時停止中は HOME ボタンでスタート画面に戻れる |
 | `COUNTDOWN` | 復帰後カウントダウン（2秒）。操作不可 |
 | `GAME_OVER` | ゲームオーバー画面 |
 | `GAME_CLEAR` | ゲームクリア画面（ステージ8クリア時） |
@@ -280,7 +280,8 @@ POWER_UP_SELECT
   ─[visibilitychange: hidden]→ PAUSED
 
 PAUSED
-  ─[visibilitychange: visible]→ COUNTDOWN
+  ─[visibilitychange: visible / 再開ボタン]→ COUNTDOWN
+  ─[HOME ボタン]→ スタート画面（途中のプレイは統計に記録しない）
   ※ BOSS_APPEARING / STAGE_CLEAR 中に PAUSED になった場合、resumeTo の elapsed はリセット（演出を最初からやり直す）
 
 COUNTDOWN
@@ -297,7 +298,7 @@ GAME_OVER / GAME_CLEAR
 | 画面 | 内容 |
 |---|---|
 | スタート画面（IDLE） | タイトル、ハイスコア表示、難易度選択（EASY / NORMAL）ボタン、EXTRAボタン（未解禁時は鍵付きの案内表示）、RANKINGボタン、統計ボタン |
-| ゲーム画面 | Canvas描画 + HUD（スコア・残機・ステージ番号） |
+| ゲーム画面 | Canvas描画 + HUD（スコア・残機・ステージ番号）。右下に一時停止ボタン、一時停止中は PAUSED 表示と HOME ボタン |
 | ゲームオーバー画面 | 累計スコア、ハイスコア、到達ステージ、スコア投稿フロー、リトライ/ホームボタン |
 | ゲームクリア画面 | 累計スコア、ハイスコア、スコア投稿フロー、もう一度遊ぶ/ホームボタン。NORMAL クリア時は「EXTRAモードが解禁されました！」を表示 |
 | リーダーボード（オーバーレイ） | NORMAL / EXTRA のタブ切り替え、トップ20のランキング表示（同点は同順位）、投稿した自分のスコアだけをハイライト、閉じるボタン |

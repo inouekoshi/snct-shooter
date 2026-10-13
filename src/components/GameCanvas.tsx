@@ -8,14 +8,16 @@ import { loadHighScore } from '@/lib/game/score'
 import type { GameState } from '@/lib/game/state'
 import type { ScoreState } from '@/lib/game/score'
 import HUD from './HUD'
+import { BTN_OUTLINE } from './buttonStyles'
 
 interface Props {
   mode: DifficultyMode
   onGameOver: (score: number, stage: number, highScore: number) => void
   onGameClear: (score: number, highScore: number) => void
+  onQuit: () => void
 }
 
-export default function GameCanvas({ mode, onGameOver, onGameClear }: Props) {
+export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<ReturnType<typeof createGameEngine> | null>(null)
   const [hudData, setHudData] = useState({ score: 0, lives: 3, stage: 1 })
@@ -137,17 +139,19 @@ export default function GameCanvas({ mode, onGameOver, onGameClear }: Props) {
             inset: 0,
             background: 'rgba(0,0,0,0.55)',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
+            gap: '32px',
             fontFamily: 'monospace',
             color: '#FFFFFF',
-            fontSize: '28px',
-            fontWeight: 'bold',
-            letterSpacing: '4px',
             pointerEvents: 'none',
           }}
         >
-          PAUSED
+          <p style={{ fontSize: '28px', fontWeight: 'bold', letterSpacing: '4px' }}>PAUSED</p>
+          <button onClick={onQuit} style={{ ...BTN_OUTLINE, background: '#000000', pointerEvents: 'auto' }}>
+            HOME
+          </button>
         </div>
       )}
     </div>
