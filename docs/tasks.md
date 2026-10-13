@@ -11,17 +11,37 @@
 
 ## 🚧 未完了のタスク
 
-### 改善・不具合
+### 不具合
 
-| Issue | 内容 | 種別 |
-|---|---|---|
-| [#1](https://github.com/inouekoshi/snct-shooter/issues/1) | EXTRAモードの難易度を実機プレイで調整する | 改善 |
-| [#2](https://github.com/inouekoshi/snct-shooter/issues/2) | 回復敵に体当たりすると被弾扱いになる（仕様の決定待ち） | 要検討 |
-| [#3](https://github.com/inouekoshi/snct-shooter/issues/3) | ランキングで同点のスコアがすべてハイライトされる | 不具合 |
-| [#4](https://github.com/inouekoshi/snct-shooter/issues/4) | 上位100件より下のスコアの順位が正しく表示されない | 不具合 |
-| [#5](https://github.com/inouekoshi/snct-shooter/issues/5) | ランキングの不適切な名前を自動で弾く（NGワードフィルタ） | 改善 |
-| [#6](https://github.com/inouekoshi/snct-shooter/issues/6) | スキル（必殺技）システムの検討 | 要検討 |
-| [#7](https://github.com/inouekoshi/snct-shooter/issues/7) | ライセンスを確定する | ドキュメント |
+| Issue | 内容 |
+|---|---|
+| [#3](https://github.com/inouekoshi/snct-shooter/issues/3) | ランキングで同点のスコアがすべてハイライトされる |
+| [#4](https://github.com/inouekoshi/snct-shooter/issues/4) | 上位100件より下のスコアの順位が正しく表示されない |
+| [#11](https://github.com/inouekoshi/snct-shooter/issues/11) | EASYのハイスコアがNORMALと同じ保存先になっている |
+| [#12](https://github.com/inouekoshi/snct-shooter/issues/12) | 統計画面のBEST SCOREが直近20件の記録からしか計算されない |
+| [#13](https://github.com/inouekoshi/snct-shooter/issues/13) | ランキングAPIがエラーのとき「まだスコアがありません」と表示される |
+| [#14](https://github.com/inouekoshi/snct-shooter/issues/14) | 敵の狙い撃ちが自機の現在位置ではなく初期の高さを狙っている（仕様の決定待ち） |
+| [#15](https://github.com/inouekoshi/snct-shooter/issues/15) | 名前に使えない文字を入れると理由が出ずに「送信に失敗しました」になる |
+| [#16](https://github.com/inouekoshi/snct-shooter/issues/16) | スタート画面の星背景でサーバーとクライアントの描画が食い違う（hydration mismatch） |
+
+### 改善・要検討
+
+| Issue | 内容 |
+|---|---|
+| [#1](https://github.com/inouekoshi/snct-shooter/issues/1) | EXTRAモードの難易度を実機プレイで調整する |
+| [#2](https://github.com/inouekoshi/snct-shooter/issues/2) | 回復敵に体当たりすると被弾扱いになる（仕様の決定待ち） |
+| [#5](https://github.com/inouekoshi/snct-shooter/issues/5) | ランキングの不適切な名前を自動で弾く（NGワードフィルタ） |
+| [#6](https://github.com/inouekoshi/snct-shooter/issues/6) | スキル（必殺技）システムの検討 |
+| [#20](https://github.com/inouekoshi/snct-shooter/issues/20) | ランキングAPIに連投の制限がない（方針の検討中） |
+
+### 開発・運用
+
+| Issue | 内容 |
+|---|---|
+| [#7](https://github.com/inouekoshi/snct-shooter/issues/7) | ライセンスを確定する |
+| [#17](https://github.com/inouekoshi/snct-shooter/issues/17) | devのEXTRAモードをmainにリリースする |
+| [#18](https://github.com/inouekoshi/snct-shooter/issues/18) | CIでテストとビルドを自動実行する |
+| [#19](https://github.com/inouekoshi/snct-shooter/issues/19) | npm run lint がESLint未設定のため動かない |
 
 ### Phase 4: オンライン化（マルチプレイ・ソーシャル機能）
 他プレイヤーとの繋がりを持たせ、ゲームの寿命をさらに延ばす。GitHub のマイルストーン「Phase 4: オンライン化」で管理。
