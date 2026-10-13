@@ -144,21 +144,22 @@ scores / scores_extra (または *_dev)/{auto-id}
 
 | メソッド | パス | 機能 |
 |---|---|---|
-| GET | `/api/scores?mode=normal\|extra` | トップ20のスコアを取得（`mode` 省略時は NORMAL）。`export const revalidate = 10` で Edge Cache を10秒利用しFirestore読み取り回数を削減 |
-| POST | `/api/scores` | スコアを投稿（ボディ: `{ name, score, stage, mode }`、`mode` 省略時は NORMAL）。バリデーション通過後にFirestoreへ書き込み、登録された順位を返却 |
+| GET | `/api/scores?mode=normal\|extra` | トップ20のスコアを取得（`mode` 省略時は NORMAL）。各エントリにドキュメントID（`id`）を含む。`export const revalidate = 10` で Edge Cache を10秒利用しFirestore読み取り回数を削減 |
+| POST | `/api/scores` | スコアを投稿（ボディ: `{ name, score, stage, mode }`、`mode` 省略時は NORMAL）。バリデーション通過後にFirestoreへ書き込み、登録された順位とドキュメントID（`{ ok: true, rank, id }`）を返却。名前が不正なら `{ error: 'invalid name' }` を400で返す |
 
 ### 4.4 サーバーサイドバリデーション（チート対策）
 `src/app/api/scores/route.ts` でリクエストを以下の観点で検証する。
 
-- **名前**: 正規表現 `/^[\p{L}\p{N}\s\-_.]{1,10}$/u` に一致するUnicode文字・数字・一部記号のみ
+- **名前**: 正規表現 `/^[\p{L}\p{N}\s\-_.]{1,10}$/u` に一致するUnicode文字・数字・一部記号のみ。判定は `src/lib/leaderboard.ts` の `isValidPlayerName` をクライアント（入力中の案内）とサーバーで共有する
 - **スコア**: 0以上9,999,999以下の整数
 - **モード**: `normal` / `extra`（省略時は `normal`）以外は400エラー
 - **ステージ**: NORMAL は1〜8、EXTRA は1〜3の整数
 - **ステージ別スコア上限**: 各ステージの理論最大スコア（`engine.ts` / `difficulty.ts` の数値から逆算）の1.5倍を上限とし、超過した値は400エラーで弾く。上限値は `src/lib/leaderboard.ts` の `SCORE_LIMITS` で管理
 
 ### 4.5 順位計算
-登録時の順位（rank）は、`getTopScores(100, board)` の結果から「自分のスコアより高いエントリ数 + 1」で算出している。
-この方式では100位より下の順位が正しく出ないため、`count()` 集計クエリへの置き換えを [#4](https://github.com/inouekoshi/snct-shooter/issues/4) で検討中。
+- 登録時の順位（rank）は、`count()` 集計クエリ（`where('score', '>', score).count()`）で「自分のスコアより高いエントリ数 + 1」として算出する。順位に関係なく正しい値が出て、読み取りコストも 1000件あたり1読み取りで済む
+- ランキング一覧の順位も同じ考え方で、同点は同じ順位にし、次の順位は人数分飛ばす（例: 1, 2, 2, 4）。`src/lib/leaderboard.ts` の `rankEntries`
+- 投稿後にランキングを開くと、投稿で返ってきたドキュメントIDのエントリだけをハイライトする（同点の他人はハイライトしない）
 
 ### 4.6 環境変数
 Firebase Admin SDK のサービスアカウントキーは `FIREBASE_SERVICE_ACCOUNT_KEY` という環境変数（1行JSON）で提供する。`.env.local`（ローカル開発）と Vercel の Environment Variables（Production / Preview / Development）に同じ値を設定する。
