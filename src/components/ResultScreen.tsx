@@ -58,6 +58,7 @@ function Title({ result, mode }: { result: GameResult; mode: DifficultyMode }) {
 
 export default function ResultScreen({ result, mode, onRetry, onHome }: Props) {
   const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [submittedId, setSubmittedId] = useState<string | undefined>(undefined)
   const board = mode === 'EXTRA' ? 'extra' : 'normal'
   const isClear = result.kind === 'clear'
 
@@ -94,6 +95,7 @@ export default function ResultScreen({ result, mode, onRetry, onHome }: Props) {
           score={result.score}
           stage={result.stage}
           board={board}
+          onSubmitted={setSubmittedId}
           onShowLeaderboard={() => setShowLeaderboard(true)}
         />
       )}
@@ -109,7 +111,7 @@ export default function ResultScreen({ result, mode, onRetry, onHome }: Props) {
 
       {showLeaderboard && (
         <Leaderboard
-          highlightScore={result.score}
+          highlightId={submittedId}
           initialBoard={board}
           onClose={() => setShowLeaderboard(false)}
         />

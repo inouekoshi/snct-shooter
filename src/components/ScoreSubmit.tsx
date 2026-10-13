@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { LeaderboardBoard } from '@/lib/leaderboard'
+import {
+  PLAYER_NAME_MAX_LENGTH, isValidPlayerName, submitLeaderboardScore, type LeaderboardBoard,
+} from '@/lib/leaderboard'
 import { loadPlayerName, savePlayerName } from '@/lib/playerName'
 import { BTN_PRIMARY, BTN_OUTLINE } from './buttonStyles'
 
@@ -11,13 +13,22 @@ interface Props {
   score: number
   stage: number
   board: LeaderboardBoard
+  onSubmitted: (id: string) => void
   onShowLeaderboard: () => void
 }
 
-export default function ScoreSubmit({ score, stage, board, onShowLeaderboard }: Props) {
+const NAME_REJECTED_MESSAGES = {
+  invalid_name: '使えない文字が含まれています',
+  inappropriate_name: 'この名前は登録できません',
+} as const
+
+type NameRejectedReason = keyof typeof NAME_REJECTED_MESSAGES
+
+export default function ScoreSubmit({ score, stage, board, onSubmitted, onShowLeaderboard }: Props) {
   const [submitState, setSubmitState] = useState<SubmitState>('idle')
   const [playerName, setPlayerName] = useState('')
   const [myRank, setMyRank] = useState<number | null>(null)
+  const [rejectedReason, setRejectedReason] = useState<NameRejectedReason | null>(null)
 
   useEffect(() => {
     setPlayerName(loadPlayerName())
@@ -26,23 +37,25 @@ export default function ScoreSubmit({ score, stage, board, onShowLeaderboard }: 
   async function submitScore() {
     setSubmitState('submitting')
     savePlayerName(playerName)
-    try {
-      const res = await fetch('/api/scores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: playerName || 'PLAYER', score, stage, mode: board }),
-      })
-      const data = await res.json()
-      if (res.ok && data.ok) {
-        setMyRank(data.rank)
-        setSubmitState('done')
-      } else {
-        setSubmitState('error')
-      }
-    } catch {
+    const result = await submitLeaderboardScore({ name: playerName, score, stage }, board)
+    if (result.ok) {
+      setMyRank(result.rank)
+      setSubmitState('done')
+      onSubmitted(result.id)
+    } else if (result.reason === 'failed') {
       setSubmitState('error')
+    } else {
+      setRejectedReason(result.reason)
+      setSubmitState('inputting')
     }
   }
+
+  const trimmedName = playerName.trim()
+  const hasInvalidChars = trimmedName.length > 0 && !isValidPlayerName(playerName)
+  const nameMessage = hasInvalidChars ? NAME_REJECTED_MESSAGES.invalid_name
+    : rejectedReason ? NAME_REJECTED_MESSAGES[rejectedReason]
+    : null
+  const canSubmit = trimmedName.length > 0 && !hasInvalidChars
 
   if (submitState === 'idle') {
     return (
@@ -57,12 +70,15 @@ export default function ScoreSubmit({ score, stage, board, onShowLeaderboard }: 
   if (submitState === 'inputting') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '100%' }}>
-        <p style={{ fontSize: '12px', color: '#888' }}>名前を入力（1〜10文字）</p>
+        <p style={{ fontSize: '12px', color: '#888' }}>名前を入力（1〜{PLAYER_NAME_MAX_LENGTH}文字・記号は - _ . のみ）</p>
         <input
           type="text"
           value={playerName}
-          onChange={e => setPlayerName(e.target.value)}
-          maxLength={10}
+          onChange={e => {
+            setPlayerName(e.target.value)
+            setRejectedReason(null)
+          }}
+          maxLength={PLAYER_NAME_MAX_LENGTH}
           autoFocus
           style={{
             background: '#111',
@@ -76,11 +92,14 @@ export default function ScoreSubmit({ score, stage, board, onShowLeaderboard }: 
             width: '200px',
           }}
         />
+        {nameMessage && (
+          <p style={{ fontSize: '12px', color: '#FF4444' }}>{nameMessage}</p>
+        )}
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
             onClick={submitScore}
-            disabled={!playerName.trim()}
-            style={{ ...BTN_PRIMARY, fontSize: '16px', padding: '10px 24px', opacity: playerName.trim() ? 1 : 0.5 }}
+            disabled={!canSubmit}
+            style={{ ...BTN_PRIMARY, fontSize: '16px', padding: '10px 24px', opacity: canSubmit ? 1 : 0.5 }}
           >
             投稿する
           </button>

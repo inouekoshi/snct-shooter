@@ -1,6 +1,7 @@
 export type LeaderboardBoard = 'normal' | 'extra'
 
 export interface LeaderboardEntry {
+  id?: string
   name: string
   score: number
   stage: number
@@ -17,6 +18,14 @@ export const SCORE_LIMITS: Record<LeaderboardBoard, Record<number, number>> = {
   },
 }
 
+export const PLAYER_NAME_MAX_LENGTH = 10
+
+const PLAYER_NAME_PATTERN = new RegExp(`^[\\p{L}\\p{N}\\s\\-_.]{1,${PLAYER_NAME_MAX_LENGTH}}$`, 'u')
+
+export function isValidPlayerName(name: string): boolean {
+  return PLAYER_NAME_PATTERN.test(name.trim())
+}
+
 export function parseBoard(value: unknown): LeaderboardBoard | null {
   if (value === undefined || value === null || value === 'normal') return 'normal'
   if (value === 'extra') return 'extra'
@@ -25,4 +34,44 @@ export function parseBoard(value: unknown): LeaderboardBoard | null {
 
 export function maxStageOf(board: LeaderboardBoard): number {
   return Object.keys(SCORE_LIMITS[board]).length
+}
+
+export function rankEntries(entries: LeaderboardEntry[]): number[] {
+  const ranks: number[] = []
+  entries.forEach((entry, i) => {
+    const sameAsPrevious = i > 0 && entries[i - 1].score === entry.score
+    ranks.push(sameAsPrevious ? ranks[i - 1] : i + 1)
+  })
+  return ranks
+}
+
+export async function fetchLeaderboard(board: LeaderboardBoard): Promise<LeaderboardEntry[]> {
+  const res = await fetch(`/api/scores?mode=${board}`)
+  if (!res.ok) throw new Error(`Failed to fetch leaderboard: ${res.status}`)
+  const data = await res.json()
+  return data.entries ?? []
+}
+
+export type SubmitScoreResult =
+  | { ok: true; rank: number; id: string }
+  | { ok: false; reason: 'invalid_name' | 'inappropriate_name' | 'failed' }
+
+export async function submitLeaderboardScore(
+  entry: { name: string; score: number; stage: number },
+  board: LeaderboardBoard
+): Promise<SubmitScoreResult> {
+  try {
+    const res = await fetch('/api/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...entry, mode: board }),
+    })
+    const data = await res.json()
+    if (res.ok && data.ok) return { ok: true, rank: data.rank, id: data.id }
+    if (data.error === 'invalid name') return { ok: false, reason: 'invalid_name' }
+    if (data.error === 'inappropriate name') return { ok: false, reason: 'inappropriate_name' }
+    return { ok: false, reason: 'failed' }
+  } catch {
+    return { ok: false, reason: 'failed' }
+  }
 }

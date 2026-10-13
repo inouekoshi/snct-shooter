@@ -27,19 +27,22 @@ export async function getTopScores(n = 20, board: LeaderboardBoard = 'normal'): 
   return snap.docs.map(doc => {
     const d = doc.data()
     const ts = d.createdAt instanceof Timestamp ? d.createdAt.toMillis() : undefined
-    return { name: d.name, score: d.score, stage: d.stage, createdAt: ts }
+    return { id: doc.id, name: d.name, score: d.score, stage: d.stage, createdAt: ts }
   })
 }
 
-export async function addScore(entry: LeaderboardEntry, board: LeaderboardBoard = 'normal'): Promise<{ rank: number }> {
+export async function addScore(
+  entry: LeaderboardEntry,
+  board: LeaderboardBoard = 'normal'
+): Promise<{ rank: number; id: string }> {
   const db = initFirebase()
-  await db.collection(collectionName(board)).add({
+  const collection = db.collection(collectionName(board))
+  const ref = await collection.add({
     name: entry.name,
     score: entry.score,
     stage: entry.stage,
     createdAt: Timestamp.now(),
   })
-  const top100 = await getTopScores(100, board)
-  const rank = top100.filter(e => e.score > entry.score).length + 1
-  return { rank }
+  const higher = await collection.where('score', '>', entry.score).count().get()
+  return { rank: higher.data().count + 1, id: ref.id }
 }

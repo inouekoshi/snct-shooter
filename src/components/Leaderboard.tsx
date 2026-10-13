@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { LeaderboardBoard, LeaderboardEntry } from '@/lib/leaderboard'
+import { fetchLeaderboard, rankEntries, type LeaderboardBoard, type LeaderboardEntry } from '@/lib/leaderboard'
 
 interface Props {
-  highlightScore?: number
+  highlightId?: string
   initialBoard?: LeaderboardBoard
   onClose: () => void
 }
@@ -14,7 +14,7 @@ const BOARD_COLORS: Record<LeaderboardBoard, string> = {
   extra: '#FF2266',
 }
 
-export default function Leaderboard({ highlightScore, initialBoard = 'normal', onClose }: Props) {
+export default function Leaderboard({ highlightId, initialBoard = 'normal', onClose }: Props) {
   const [board, setBoard] = useState<LeaderboardBoard>(initialBoard)
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -24,11 +24,10 @@ export default function Leaderboard({ highlightScore, initialBoard = 'normal', o
     let cancelled = false
     setLoading(true)
     setError(false)
-    fetch(`/api/scores?mode=${board}`)
-      .then(r => r.json())
-      .then(data => {
+    fetchLeaderboard(board)
+      .then(fetched => {
         if (cancelled) return
-        setEntries(data.entries ?? [])
+        setEntries(fetched)
         setLoading(false)
       })
       .catch(() => {
@@ -38,6 +37,8 @@ export default function Leaderboard({ highlightScore, initialBoard = 'normal', o
       })
     return () => { cancelled = true }
   }, [board])
+
+  const ranks = rankEntries(entries)
 
   return (
     <div
@@ -129,10 +130,11 @@ export default function Leaderboard({ highlightScore, initialBoard = 'normal', o
           </p>
         )}
         {!loading && !error && entries.map((entry, i) => {
-          const isHighlight = highlightScore !== undefined && board === initialBoard && entry.score === highlightScore
+          const isHighlight = highlightId !== undefined && board === initialBoard && entry.id === highlightId
+          const rank = ranks[i]
           return (
             <div
-              key={i}
+              key={entry.id ?? i}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -142,8 +144,8 @@ export default function Leaderboard({ highlightScore, initialBoard = 'normal', o
                 color: isHighlight ? '#FFFF00' : '#FFFFFF',
               }}
             >
-              <span style={{ fontSize: '16px', width: '28px', textAlign: 'right', flexShrink: 0, color: i < 3 ? '#FFFF00' : '#888' }}>
-                {i + 1}
+              <span style={{ fontSize: '16px', width: '28px', textAlign: 'right', flexShrink: 0, color: rank <= 3 ? '#FFFF00' : '#888' }}>
+                {rank}
               </span>
               <span style={{ fontSize: '16px', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {entry.name}

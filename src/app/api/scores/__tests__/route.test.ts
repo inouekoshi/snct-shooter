@@ -16,7 +16,7 @@ const post = (body: unknown) =>
 
 beforeEach(() => {
   vi.mocked(getTopScores).mockReset()
-  vi.mocked(addScore).mockReset().mockResolvedValue({ rank: 3 })
+  vi.mocked(addScore).mockReset().mockResolvedValue({ rank: 3, id: 'doc1' })
 })
 
 describe('GET /api/scores', () => {
@@ -49,7 +49,7 @@ describe('POST /api/scores', () => {
   it('正しい入力なら名前をtrimして保存し順位を返す', async () => {
     const res = await post({ name: '  たろう ', score: 1500, stage: 1 })
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ ok: true, rank: 3 })
+    expect(await res.json()).toEqual({ ok: true, rank: 3, id: 'doc1' })
     expect(addScore).toHaveBeenCalledWith({ name: 'たろう', score: 1500, stage: 1 }, 'normal')
   })
 
@@ -80,11 +80,17 @@ describe('POST /api/scores', () => {
     ['空文字', ''],
     ['11文字', 'abcdefghijk'],
     ['記号', '<script>'],
+    ['絵文字', 'たろう😀'],
     ['文字列以外', 123],
-  ])('不正な名前（%s）は400', async (_, name) => {
+  ])('不正な名前（%s）は400で invalid name を返す', async (_, name) => {
     const res = await post({ name, score: 100, stage: 1 })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid name' })
     expect(addScore).not.toHaveBeenCalled()
+  })
+
+  it('日本語10文字の名前は受け付ける', async () => {
+    expect((await post({ name: 'ひらがなカタカナ漢字', score: 100, stage: 1 })).status).toBe(200)
   })
 
   it.each([
