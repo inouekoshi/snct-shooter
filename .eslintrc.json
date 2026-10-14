@@ -1,3 +1,4 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": "next/core-web-vitals",
+  "ignorePatterns": [".next/", "node_modules/", "public/sw.js", "public/swe-worker-*.js", "next-env.d.ts", "coverage/"]
 }

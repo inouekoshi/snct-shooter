@@ -16,7 +16,7 @@
 
 ## 技術スタック
 
-- **フレームワーク**: Next.js 14 (App Router)
+- **フレームワーク**: Next.js 15 (App Router) + React 19（Node.js 22）
 - **言語**: TypeScript
 - **ゲーム描画**: Canvas API + requestAnimationFrame（delta-time ベース）
 - **操作**: Touch Events API（`passive: false` で `addEventListener` 直接登録）
@@ -24,7 +24,7 @@
 - **オンラインランキング**: Firebase Firestore + Firebase Admin SDK（`/api/scores` 経由のみ。クライアントから直接触らない）
 - **PWA**: Serwist（next-pwa は App Router 非互換のため不採用）。`/api/*` はキャッシュしない
 - **テスト**: Vitest（`npm test`）
-- **Lint**: ESLint（`next/core-web-vitals`、`npm run lint`）
+- **Lint**: ESLint（`next/core-web-vitals`、`npm run lint` は ESLint CLI。`next lint` は Next 16 で廃止のため使わない）
 - **デプロイ**: Vercel
 
 ## 開発ワークフロー

@@ -28,8 +28,8 @@ export function consumeRateLimit(
   return { allowed: true, next: { windowStart: current.windowStart, count: current.count + 1 } }
 }
 
-export function clientIpOf(headers: Headers, ip?: string): string | null {
-  const candidate = ip ?? headers.get('x-forwarded-for')?.split(',')[0] ?? headers.get('x-real-ip')
+export function clientIpOf(headers: Headers): string | null {
+  const candidate = headers.get('x-real-ip') ?? headers.get('x-forwarded-for')?.split(',')[0]
   const trimmed = candidate?.trim()
   return trimmed ? trimmed : null
 }

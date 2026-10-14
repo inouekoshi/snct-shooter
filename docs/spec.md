@@ -493,7 +493,7 @@ NORMAL をクリアしたプレイヤー向けの高難度モード。
 
 | 役割 | 技術 |
 |---|---|
-| フレームワーク | Next.js 14 (App Router) |
+| フレームワーク | Next.js 15 (App Router) + React 19（Node.js 22） |
 | 言語 | TypeScript |
 | ゲーム描画 | Canvas API + requestAnimationFrame（delta-time ベース） |
 | 操作 | Touch Events API（`addEventListener` で `passive: false` 登録） |

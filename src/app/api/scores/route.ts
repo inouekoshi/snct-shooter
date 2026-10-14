@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
 
     const limit = parseRateLimit(process.env.SCORES_RATE_LIMIT_PER_MINUTE)
-    const clientIp = clientIpOf(req.headers, req.ip)
+    const clientIp = clientIpOf(req.headers)
     if (limit > 0 && clientIp && !(await consumeSubmissionQuota(hashClientIp(clientIp), limit))) {
       return NextResponse.json({ error: 'too many requests' }, { status: 429 })
     }

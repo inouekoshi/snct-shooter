@@ -52,11 +52,12 @@
 - 回復敵に触れたら回収（#2）、狙い撃ちの照準を仕様書に明記（#14）
 - スタート画面の hydration mismatch（#16）、Service Worker で `/api/*` をキャッシュしない
 - ゲーム内の乱数のシード化（#21）
-- ランキング取得 API を CDN で10秒キャッシュ（#22）、一時停止中に HOME へ戻れる（#23）、`@types/react` を React 18 にそろえる（#24）
+- ランキング取得 API を CDN で10秒キャッシュ（#22）、一時停止中に HOME へ戻れる（#23）、`@types/react` を React 18 にそろえる（#24、その後 #25 で React 19 に更新）
 
 ### 開発基盤
 - Vitest によるゲームロジック・API のユニットテスト（`npm test`）
 - ESLint（`npm run lint`、#19）と GitHub Actions の CI（テスト・Lint・ビルド、#18）
+- 依存パッケージの脆弱性を解消（#25）: Next.js 14 → 15.5、React 19、firebase-admin 14、Vitest 5。Node.js 22 を指定
 - `main`（本番）/ `dev`（プレビュー）のブランチ運用と Firestore コレクションの環境分離
 - MIT License（#7）
 

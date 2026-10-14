@@ -42,16 +42,12 @@ describe('parseRateLimit', () => {
 })
 
 describe('clientIpOf', () => {
-  it('ip があればそれを使う', () => {
-    expect(clientIpOf(new Headers({ 'x-forwarded-for': '1.1.1.1' }), '2.2.2.2')).toBe('2.2.2.2')
+  it('x-real-ip があればそれを優先する', () => {
+    expect(clientIpOf(new Headers({ 'x-forwarded-for': '1.1.1.1', 'x-real-ip': '2.2.2.2' }))).toBe('2.2.2.2')
   })
 
   it('x-forwarded-for の先頭を使う', () => {
     expect(clientIpOf(new Headers({ 'x-forwarded-for': ' 203.0.113.5 , 10.0.0.1' }))).toBe('203.0.113.5')
-  })
-
-  it('x-real-ip も使う', () => {
-    expect(clientIpOf(new Headers({ 'x-real-ip': '203.0.113.9' }))).toBe('203.0.113.9')
   })
 
   it('分からなければ null', () => {

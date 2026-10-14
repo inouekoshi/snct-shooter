@@ -27,7 +27,7 @@
 
 ## 🛠 技術スタック
 
-- **フレームワーク**: Next.js 14 (App Router)
+- **フレームワーク**: Next.js 15 (App Router) + React 19（Node.js 22）
 - **言語**: TypeScript
 - **描画エンジン**: Canvas API + requestAnimationFrame (delta-time ベース制御)
 - **操作制御**: Touch Events API
