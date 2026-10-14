@@ -37,7 +37,8 @@
 - Firestore のコレクションは `VERCEL_ENV` で自動切替（本番 `scores`・`scores_extra` / それ以外は末尾に `_dev`）
 - 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` が必要（ローカルは `.env.local`）。任意で `NG_WORDS`（NG ワード追加）・`SCORES_RATE_LIMIT_PER_MINUTE`（IP ごとの投稿上限、既定20）・`SCORES_SUBMISSION_DISABLED=1`（投稿の緊急停止）。一覧は `docs/architecture.md` §4.6
 - コミット前に `npm test`・`npm run lint`・`npm run build` が通ることを確認する
-- `dev` / `main` への push と PR では GitHub Actions（`.github/workflows/ci.yml`）が同じ3つを自動実行する
+- `dev` / `main` への push と PR では GitHub Actions（`.github/workflows/ci.yml`）が同じ3つと `npm audit --omit=dev --audit-level=high`（本番の依存の脆弱性チェック）を自動実行する
+- Dependabot（`.github/dependabot.yml`）が `dev` 宛てに依存の更新 PR を作る（npm は毎週、GitHub Actions は毎月）
 
 ## ディレクトリ構成
 

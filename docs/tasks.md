@@ -58,6 +58,7 @@
 - Vitest によるゲームロジック・API のユニットテスト（`npm test`）
 - ESLint（`npm run lint`、#19）と GitHub Actions の CI（テスト・Lint・ビルド、#18）
 - 依存パッケージの脆弱性を解消（#25）: Next.js 14 → 15.5、React 19、firebase-admin 14、Vitest 5。Node.js 22 を指定
+- CI で本番の依存の脆弱性をチェックし、Dependabot で依存の更新 PR を自動作成（#26）
 - `main`（本番）/ `dev`（プレビュー）のブランチ運用と Firestore コレクションの環境分離
 - MIT License（#7）
 
