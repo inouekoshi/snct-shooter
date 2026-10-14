@@ -5,7 +5,7 @@ import { createGameEngine, type GameEngine } from '@/lib/game/engine'
 import type { DifficultyMode } from '@/lib/game/difficulty'
 import { registerTouchHandlers, createTouchBuffer } from '@/lib/game/touch'
 import { loadHighScore, type ScoreState } from '@/lib/game/score'
-import { isPausable, type GameState } from '@/lib/game/state'
+import { isPausable, stageOf, type GameState } from '@/lib/game/state'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/game/constants'
 import HUD from './HUD'
 import { BTN_OUTLINE } from './buttonStyles'
@@ -58,7 +58,7 @@ export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Pr
         setHudData({
           score: score.total,
           lives: engine.lives,
-          stage: 'stage' in state ? state.stage : 1,
+          stage: stageOf(state) ?? 1,
           guardValue: engine.guard.value,
           guardMax: engine.guard.max,
         })

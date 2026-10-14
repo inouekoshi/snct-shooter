@@ -25,3 +25,8 @@ const PAUSABLE_STATE_TYPES: ReadonlyArray<GameState['type']> = [
 export function isPausable(type: GameState['type']): boolean {
   return PAUSABLE_STATE_TYPES.includes(type)
 }
+
+export function stageOf(state: GameState): number | null {
+  if (state.type === 'PAUSED' || state.type === 'COUNTDOWN') return stageOf(state.resumeTo)
+  return 'stage' in state ? state.stage : null
+}
