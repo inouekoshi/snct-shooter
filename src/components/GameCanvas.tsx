@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { createGameEngine } from '@/lib/game/engine'
+import { createGameEngine, type GameEngine } from '@/lib/game/engine'
 import type { DifficultyMode } from '@/lib/game/difficulty'
 import { registerTouchHandlers, createTouchBuffer } from '@/lib/game/touch'
-import { loadHighScore } from '@/lib/game/score'
-import type { GameState } from '@/lib/game/state'
-import type { ScoreState } from '@/lib/game/score'
+import { loadHighScore, type ScoreState } from '@/lib/game/score'
+import { isPausable, type GameState } from '@/lib/game/state'
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/game/constants'
 import HUD from './HUD'
 import { BTN_OUTLINE } from './buttonStyles'
 
@@ -19,7 +19,7 @@ interface Props {
 
 export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const engineRef = useRef<ReturnType<typeof createGameEngine> | null>(null)
+  const engineRef = useRef<GameEngine | null>(null)
   const [hudData, setHudData] = useState({ score: 0, lives: 3, stage: 1, guardValue: 0, guardMax: 1 })
   const [stateType, setStateType] = useState<GameState['type']>('IDLE')
 
@@ -28,10 +28,10 @@ export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Pr
     if (!canvas) return
 
     const dpr = window.devicePixelRatio || 1
-    canvas.width = 390 * dpr
-    canvas.height = 844 * dpr
-    canvas.style.width = '390px'
-    canvas.style.height = '844px'
+    canvas.width = CANVAS_WIDTH * dpr
+    canvas.height = CANVAS_HEIGHT * dpr
+    canvas.style.width = `${CANVAS_WIDTH}px`
+    canvas.style.height = `${CANVAS_HEIGHT}px`
     const ctx = canvas.getContext('2d')!
     ctx.scale(dpr, dpr)
 
@@ -55,13 +55,10 @@ export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Pr
           return
         }
 
-        let stageNum = 1
-        if ('stage' in state) stageNum = (state as { stage: number }).stage
-
         setHudData({
           score: score.total,
           lives: engine.lives,
-          stage: stageNum,
+          stage: 'stage' in state ? state.stage : 1,
           guardValue: engine.guard.value,
           guardMax: engine.guard.max,
         })
@@ -89,9 +86,8 @@ export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Pr
     }
   }, [mode, onGameOver, onGameClear])
 
-
   const isPaused = stateType === 'PAUSED'
-  const showPauseButton = isPaused || ['PLAYING', 'BOSS_APPEARING', 'BOSS_FIGHT', 'STAGE_CLEAR', 'POWER_UP_SELECT'].includes(stateType)
+  const showPauseButton = isPaused || isPausable(stateType)
 
   const handlePauseToggle = () => {
     const engine = engineRef.current
@@ -101,7 +97,7 @@ export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Pr
   }
 
   return (
-    <div style={{ position: 'relative', width: '390px', height: '844px' }}>
+    <div style={{ position: 'relative', width: `${CANVAS_WIDTH}px`, height: `${CANVAS_HEIGHT}px` }}>
       <canvas
         ref={canvasRef}
         style={{ display: 'block', touchAction: 'none', userSelect: 'none' }}

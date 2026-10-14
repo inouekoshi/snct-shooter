@@ -16,7 +16,7 @@ describe('score', () => {
   })
 
   it('createScoreState はハイスコアを引き継いで0から始まる', () => {
-    expect(createScoreState(1234)).toEqual({ total: 0, stage: 0, highScore: 1234 })
+    expect(createScoreState(1234)).toEqual({ total: 0, highScore: 1234 })
   })
 
   it('未保存なら0を返す', () => {

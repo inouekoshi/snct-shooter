@@ -7,12 +7,11 @@ const EXTRA_UNLOCKED_KEY = 'shooter-extra-unlocked'
 
 export interface ScoreState {
   total: number
-  stage: number
   highScore: number
 }
 
 export function createScoreState(highScore: number): ScoreState {
-  return { total: 0, stage: 0, highScore }
+  return { total: 0, highScore }
 }
 
 function highScoreKey(mode: DifficultyMode): string {

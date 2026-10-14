@@ -30,88 +30,83 @@ const FAN_TOTAL_DEG = 80
 
 const OFFSCREEN_MARGIN = 76
 
+const SPAWN_Y = -20
+
 function randomSpawnX(rng: Rng): number {
   return 40 + rng() * 310
 }
 
-export function createNormalEnemy(diff: DifficultyParams, rng: Rng = Math.random): Enemy {
+type EnemySpec = Pick<Enemy, 'kind' | 'x' | 'radius' | 'hp' | 'speed' | 'score'> & Partial<Enemy>
+
+function createEnemy(spec: EnemySpec): Enemy {
   return {
-    kind: 'normal',
-    x: randomSpawnX(rng),
-    y: -20,
-    radius: 15,
-    hp: 1,
-    maxHp: 1,
-    speed: diff.normalEnemySpeed,
+    y: SPAWN_Y,
+    maxHp: spec.hp,
     fireTimer: 0,
     fireInterval: Infinity,
     bulletSpeed: 0,
-    score: 10,
     vx: 0,
     movePhase: 0,
     shotCount: 0,
+    ...spec,
   }
+}
+
+export function createNormalEnemy(diff: DifficultyParams, rng: Rng = Math.random): Enemy {
+  return createEnemy({
+    kind: 'normal',
+    x: randomSpawnX(rng),
+    radius: 15,
+    hp: 1,
+    speed: diff.normalEnemySpeed,
+    score: 10,
+  })
 }
 
 export function createAttackEnemy(diff: DifficultyParams, rng: Rng = Math.random): Enemy {
   const zigzag = rng() < 0.4
-  return {
+  return createEnemy({
     kind: 'attack',
     x: randomSpawnX(rng),
-    y: -20,
     radius: 20,
     hp: diff.attackEnemyHp,
-    maxHp: diff.attackEnemyHp,
     speed: diff.attackEnemySpeed,
     fireTimer: diff.attackEnemyFireInterval * rng(),
     fireInterval: diff.attackEnemyFireInterval,
     bulletSpeed: diff.attackEnemyBulletSpeed,
     score: 30,
     vx: zigzag ? (rng() < 0.5 ? 1 : -1) * 70 : 0,
-    movePhase: 0,
     shotCount: zigzag ? diff.attackEnemyShots.zigzag : diff.attackEnemyShots.straight,
-  }
+  })
 }
 
 export function createHealEnemy(rng: Rng = Math.random): Enemy {
-  return {
+  return createEnemy({
     kind: 'heal',
     x: randomSpawnX(rng),
-    y: -20,
     radius: 14,
     hp: 1,
-    maxHp: 1,
     speed: 65,
-    fireTimer: 0,
-    fireInterval: Infinity,
-    bulletSpeed: 0,
     score: 0,
-    vx: 0,
-    movePhase: 0,
-    shotCount: 0,
-  }
+  })
 }
 
 export function createBoss(diff: DifficultyParams): Enemy {
   const isFinal = diff.bossVariant === 'final'
-  return {
+  return createEnemy({
     kind: 'boss',
     x: CANVAS_CENTER_X,
     y: -60,
     radius: isFinal ? 48 : 40,
     hp: diff.bossHp,
-    maxHp: diff.bossHp,
     speed: diff.bossSpeed,
     fireTimer: diff.bossParams.interval1,
     fireInterval: diff.bossParams.interval1,
     bulletSpeed: diff.bossParams.bulletSpeed1,
     score: isFinal ? 1000 : 500,
-    vx: 0,
-    movePhase: 0,
-    shotCount: 0,
     bossParams: diff.bossParams,
     bossVariant: diff.bossVariant,
-  }
+  })
 }
 
 export function updateEnemies(
@@ -208,14 +203,12 @@ export function enemyColor(e: Enemy): string {
 
 export function renderEnemies(ctx: CanvasRenderingContext2D, enemies: Enemy[]): void {
   for (const e of enemies) {
-    if (e.kind === 'normal') {
-      renderNormalEnemy(ctx, e)
-    } else if (e.kind === 'attack') {
-      renderAttackEnemy(ctx, e)
-    } else if (e.kind === 'boss') {
+    if (e.kind === 'boss') {
       renderBoss(ctx, e)
     } else if (e.kind === 'heal') {
       renderHealEnemy(ctx, e)
+    } else {
+      renderTriangleEnemy(ctx, e)
     }
   }
 }
@@ -230,18 +223,7 @@ function renderHealEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
   ctx.fillRect(e.x - 2, e.y - 6, 4, 12)
 }
 
-function renderNormalEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
-  const s = e.radius
-  ctx.fillStyle = enemyColor(e)
-  ctx.beginPath()
-  ctx.moveTo(e.x, e.y + s)
-  ctx.lineTo(e.x - s, e.y - s)
-  ctx.lineTo(e.x + s, e.y - s)
-  ctx.closePath()
-  ctx.fill()
-}
-
-function renderAttackEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
+function renderTriangleEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const s = e.radius
   ctx.fillStyle = enemyColor(e)
   ctx.beginPath()

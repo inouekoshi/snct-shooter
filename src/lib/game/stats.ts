@@ -39,7 +39,7 @@ const EMPTY_STATS: LifetimeStats = {
   bestScore: 0,
   maxStageReached: 0,
   totalPlays: 0,
-  totalKills: { normal: 0, attack: 0, boss: 0, heal: 0 },
+  totalKills: createKillCounts(),
 }
 
 function isSummaryTarget(record: GameRecord): boolean {

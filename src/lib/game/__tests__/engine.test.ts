@@ -78,3 +78,29 @@ describe('createGameEngine のオートガード', () => {
     expect(engine.lives).toBe(2)
   })
 })
+
+describe('createGameEngine の乱数シード', () => {
+  const playTrace = (seed: number, frames = 3000) => {
+    const raf = vi.mocked(requestAnimationFrame)
+    const touch = createTouchBuffer()
+    const engine = createGameEngine(canvas, touch, () => undefined, 'NORMAL')
+    engine.start(seed)
+    const trace: string[] = []
+    for (let i = 0; i < frames; i++) {
+      touch.active = true
+      touch.x = 195 + 150 * Math.sin(i / 50)
+      touch.y = 760
+      raf.mock.calls[raf.mock.calls.length - 1][0](i * 16)
+      trace.push(`${engine.state.type}:${engine.score.total}:${engine.lives}:${engine.guard.value}`)
+    }
+    return trace
+  }
+
+  it('同じシードと同じ入力なら同じ展開になる', () => {
+    expect(playTrace(7)).toEqual(playTrace(7))
+  })
+
+  it('シードが違えば展開が変わる', () => {
+    expect(playTrace(7)).not.toEqual(playTrace(8))
+  })
+})

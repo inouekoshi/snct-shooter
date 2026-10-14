@@ -2,6 +2,7 @@
 
 import type { DifficultyMode } from '@/lib/game/difficulty'
 import { GUARD_COLOR } from '@/lib/game/guard'
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/game/constants'
 
 interface HUDProps {
   score: number
@@ -24,8 +25,8 @@ export default function HUD({ score, lives, stage, guardValue, guardMax, mode }:
         position: 'absolute',
         top: 0,
         left: 0,
-        width: '390px',
-        height: '844px',
+        width: `${CANVAS_WIDTH}px`,
+        height: `${CANVAS_HEIGHT}px`,
         pointerEvents: 'none',
         padding: '12px 16px',
         boxSizing: 'border-box',
