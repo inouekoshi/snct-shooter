@@ -35,7 +35,7 @@
 - **データ保存（オンライン）**: Firebase Firestore（リーダーボード）+ Firebase Admin SDK（API Routes 経由のみアクセス）
 - **PWA**: Serwist
 - **テスト**: Vitest
-- **Lint / CI**: ESLint・GitHub Actions（テスト・Lint・ビルドを自動実行）
+- **Lint / CI**: ESLint・GitHub Actions（脆弱性チェック・テスト・Lint・ビルドを自動実行）・Dependabot（依存の更新 PR を自動作成）
 - **ホスティング**: Vercel（main ブランチ自動デプロイ）
 
 さらに詳しい設計やディレクトリ構成については、アーキテクチャドキュメント [docs/architecture.md](docs/architecture.md) をご覧ください。
@@ -50,6 +50,7 @@
 - 画面上の任意の場所に指を置き、ドラッグすることで自機を移動させます。
 - 弾は自動的に連射されます。タップ等の操作は不要です。
 - 敵の弾や敵本体に当たらないように避けながら、敵を倒してステージを進めましょう。
+- 右下のボタンで一時停止できます。一時停止中は HOME ボタンでタイトルに戻れます。
 - 敵を倒すと右上の GUARD ゲージが溜まります。満タン（GUARD READY）のときに被弾すると、残機の代わりにゲージを使って画面内の敵弾を消します。
 
 ### 難易度
@@ -73,7 +74,7 @@
    cd snct-shooter
    ```
 
-2. **依存関係のインストール**
+2. **依存関係のインストール**（Node.js 22 が必要です）
    ```bash
    npm install
    ```
@@ -85,11 +86,13 @@
    FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account","project_id":"...",...}
    ```
    ※ ランキング機能を使わない場合は省略可能（ローカルプレイのみで動作）。
+   任意の環境変数（NG ワードの追加・投稿回数の上限・投稿の緊急停止）は [docs/architecture.md §4.6](docs/architecture.md#46-環境変数) を参照してください。
 
-4. **テスト・Lint の実行**
+4. **テスト・Lint・ビルドの確認**
    ```bash
    npm test
    npm run lint
+   npm run build
    ```
 
 5. **開発サーバーの起動**
@@ -113,8 +116,8 @@
 
 ### データベースの環境分離
 テストデータが本番のランキングに混入するのを防ぐため、Firestoreの参照先コレクションを自動で切り替えています。
-- Production環境: `scores`（NORMAL）/ `scores_extra`（EXTRA）コレクションを使用
-- Preview/Development環境: `scores_dev` / `scores_extra_dev` コレクションを使用
+- Production環境: `scores`（NORMAL）/ `scores_extra`（EXTRA）/ `rate_limits`（投稿回数の制限）コレクションを使用
+- Preview/Development環境: `scores_dev` / `scores_extra_dev` / `rate_limits_dev` コレクションを使用
 
 ※ 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` は Vercel ダッシュボードで Production / Preview / Development の3環境すべてに共通で設定されています。
 

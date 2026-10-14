@@ -475,7 +475,7 @@ NORMAL をクリアしたプレイヤー向けの高難度モード。
 | パワーアップ | ステージクリア後に2択（HP回復 / 連射・弾速・武器強化） |
 | データベース | Firebase Firestore（オンラインランキングのみ）。その他はローカル保存 |
 | Canvas解像度 | `devicePixelRatio` スケーリング（Retina対応） |
-| バックグラウンド | `visibilitychange` イベントで自動一時停止・2秒カウントダウン後再開 |
+| 一時停止 | 右下の一時停止ボタン、または `visibilitychange`（バックグラウンド移行）で一時停止し、2秒カウントダウン後に再開。一時停止中は HOME ボタンでスタート画面に戻れる |
 | localStorage 不可時 | スコアはセッション内のみ表示（エラーにしない） |
 | タッチイベント | `passive: false` で `addEventListener` に直接登録し `preventDefault()` でスクロール抑制 |
 | セーフエリア | `env(safe-area-inset-*)` を適用。ゲームプレイ領域はセーフエリアを除いた範囲 |
@@ -501,6 +501,7 @@ NORMAL をクリアしたプレイヤー向けの高難度モード。
 | オンラインランキング | Firebase Firestore + Firebase Admin SDK（API Routes 経由） |
 | オフライン対応 | PWA（Serwist） ※ next-pwa は App Router 非互換のため不採用 |
 | テスト | Vitest |
+| Lint・CI | ESLint（`next/core-web-vitals`）、GitHub Actions（脆弱性チェック・テスト・Lint・ビルド）、Dependabot |
 | デプロイ | Vercel |
 | バージョン管理 | GitHub |
 
@@ -554,6 +555,7 @@ type GameState =
 - HUD は CSS `position: absolute` の HTML 要素で Canvas に重ねる
 - `pointer-events: none` を付与してタッチ入力と干渉しないようにする
 - スコア・残機・ステージ番号を上部に表示
+- 残機の下にオートガードのゲージ（満タンで「GUARD READY」）
 
 ### 5.5 Serwist（PWA）設定
 
@@ -586,10 +588,11 @@ type GameState =
 
 ## 6. デプロイ
 
-- **Vercel** にプッシュ → 自動デプロイ
-- `main` ブランチ = 本番環境（Firestore コレクション `scores`）
-- `dev` ブランチ = 開発・プレビュー環境（Firestore コレクション `scores_dev`）
-- 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` が必要
+- **Vercel** にプッシュ → 自動デプロイ（Node.js 22。`package.json` の `engines` で指定）
+- `main` ブランチ = 本番環境（Firestore コレクション `scores`・`scores_extra`・`rate_limits`）
+- `dev` ブランチ = 開発・プレビュー環境（Firestore コレクション `scores_dev`・`scores_extra_dev`・`rate_limits_dev`）
+- 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` が必要。任意の環境変数（`NG_WORDS`・`SCORES_RATE_LIMIT_PER_MINUTE`・`SCORES_SUBMISSION_DISABLED`）は [architecture.md §4.6](architecture.md#46-環境変数) を参照
+- `dev` / `main` への push と PR で GitHub Actions の CI が走る。依存の更新 PR は Dependabot が `dev` 宛てに作る
 - iOS Safari では `beforeinstallprompt` が非対応のため、インストール誘導は「Safari の共有ボタンからホーム画面に追加」の案内テキストで対応
 
 ---
@@ -607,6 +610,7 @@ type GameState =
 - 白い上向き三角形（Canvas の `fillStyle: '#FFFFFF'`）
 - サイズ: 幅 24px × 高さ 30px
 - 被弾・無敵中は点滅（100ms 単位でオン/オフ）
+- オートガードが満タンのときは、自機の周りに水色（`#00E5FF`）の輪が点滅する
 
 ### 7.3 敵
 
@@ -631,6 +635,7 @@ type GameState =
 - 画面揺れ（ゲーム画面のみ揺らし、HUD・オーバーレイは揺らさない）
   - 被弾時: 振幅 6px・250ms（白い破片も発生）
   - ボス撃破時: 振幅 12px・600ms
+  - オートガード発動時: 振幅 6px・250ms（水色の破片が大きく広がる）
   - 時間とともに減衰。揺れの最中は弱い揺れで上書きしない
   - OS の「視差効果を減らす」（`prefers-reduced-motion: reduce`）が有効なら揺らさない
 

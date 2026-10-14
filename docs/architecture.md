@@ -16,10 +16,11 @@ src/
 │   │   └── page.tsx          # ゲームプレイ画面。モード判定・EXTRA解禁チェック・結果画面の切り替え
 │   └── api/
 │       └── scores/
-│           └── route.ts      # リーダーボードAPI (GET: top20取得 / POST: スコア投稿)
+│           ├── route.ts      # リーダーボードAPI (GET: top20取得 / POST: スコア投稿)
+│           └── __tests__/    # API のユニットテスト
 ├── components/
-│   ├── GameCanvas.tsx        # Canvas とゲームエンジンを接続するコンポーネント
-│   ├── HUD.tsx               # スコアや残機を表示するHUD (Canvas上にCSSで重ねる)
+│   ├── GameCanvas.tsx        # Canvas とゲームエンジンを接続するコンポーネント。一時停止ボタンと一時停止中の HOME ボタン
+│   ├── HUD.tsx               # スコア・残機・オートガードのゲージを表示するHUD (Canvas上にCSSで重ねる)
 │   ├── ResultScreen.tsx      # ゲームオーバー／クリア画面
 │   ├── ScoreSubmit.tsx       # スコア投稿フロー（名前入力〜順位表示）
 │   ├── Leaderboard.tsx       # ランキング表示UI (NORMAL / EXTRA タブ付きオーバーレイ)
@@ -63,7 +64,11 @@ src/
 firebase.json                 # Firebase CLI 設定 (Firestore ルール・インデックスのパスを定義)
 .firebaserc                   # Firebase プロジェクトID (snct-shooter)
 firestore.rules               # Firestore セキュリティルール (API Routes 経由のみ許可)
-firestore.indexes.json        # Firestore インデックス定義 (現状なし)
+firestore.indexes.json        # Firestore インデックス定義 (現状なし。順位計算の count() は単一フィールドの自動インデックスで動く)
+.github/workflows/ci.yml      # GitHub Actions の CI (脆弱性チェック・テスト・Lint・ビルド)
+.github/dependabot.yml        # 依存パッケージの更新 PR を dev 宛てに自動作成
+.eslintrc.json                # ESLint 設定 (next/core-web-vitals)
+LICENSE                       # MIT License
 ```
 
 ## 2. コア技術・ゲームエンジン設計
@@ -84,8 +89,8 @@ firestore.indexes.json        # Firestore インデックス定義 (現状なし
 - `BOSS_FIGHT`: ボス戦闘中
 - `STAGE_CLEAR`: ボス撃破時のステージクリア演出（2秒）
 - `POWER_UP_SELECT`: ステージクリア後のパワーアップ選択画面（タップで選択）
-- `PAUSED`: タブの移動やバックグラウンド移行時の自動一時停止
-- `COUNTDOWN`: PAUSED からの復帰カウントダウン
+- `PAUSED`: 一時停止ボタン、またはタブの移動・バックグラウンド移行による一時停止。一時停止中は HOME ボタンでスタート画面に戻れる
+- `COUNTDOWN`: PAUSED からの復帰カウントダウン（2秒）。この間にバックグラウンドへ移ると PAUSED に戻る
 - `GAME_OVER`: プレイヤーの残機がゼロになった状態
 - `GAME_CLEAR`: 最終ステージをクリアした状態（NORMAL/EASY は8、EXTRA は3）
 
@@ -112,6 +117,12 @@ Reactの合成イベント (SyntheticEvent) ではなく、ネイティブの `T
 これにより、計算負荷を極小化しつつ、プレイヤーからの視覚的なヒット感覚を直感的なものにしています。
 
 自機弾の命中処理は `collision.ts` の `applyPlayerBulletHits` にまとめています。通常弾は最初に当たった敵で消え、貫通レーザー（EXTRA の武器 Lv.5）は重なった敵すべてに1回ずつ当たって残ります。
+
+自機の被弾処理は `engine.ts` の `takeHit` にまとめています。
+
+- 回復敵に触れたときは被弾ではなく回収（残機+1）になる（`collision.ts` の `findTouchedEnemies`）。無敵中でも回収できる
+- 敵弾と敵（回復敵・ボスを除く）への接触は、無敵でなければ1フレームに1回だけ被弾として扱う
+- 被弾時にオートガード（`guard.ts`）が満タンなら、残機の代わりにゲージを使い、画面内の敵弾を消して1秒間無敵になる
 
 ## 3. PWA (Progressive Web App) 対応
 iOS/Android 双方でのオフライン動作およびアプリライクな体験を提供するために `Serwist` を導入しています。
@@ -157,7 +168,18 @@ rate_limits (または rate_limits_dev)/{IPのSHA-256ハッシュ}
 | メソッド | パス | 機能 |
 |---|---|---|
 | GET | `/api/scores?mode=normal\|extra` | トップ20のスコアを取得（`mode` 省略時は NORMAL）。各エントリにドキュメントID（`id`）を含む。成功時は `Cache-Control: public, s-maxage=10, stale-while-revalidate=50` を付け、Vercel の CDN で10秒キャッシュして Firestore の読み取り回数を減らす（クエリごとに別キャッシュ）。投稿直後にランキングを開くときは `&after=<ドキュメントID>` を付けてキャッシュを外し、自分のスコアを必ず表示する |
-| POST | `/api/scores` | スコアを投稿（ボディ: `{ name, score, stage, mode }`、`mode` 省略時は NORMAL）。バリデーション通過後にFirestoreへ書き込み、登録された順位とドキュメントID（`{ ok: true, rank, id }`）を返却。名前が不正なら `{ error: 'invalid name' }` を400で返す |
+| POST | `/api/scores` | スコアを投稿（ボディ: `{ name, score, stage, mode }`、`mode` 省略時は NORMAL）。バリデーション通過後にFirestoreへ書き込み、登録された順位とドキュメントID（`{ ok: true, rank, id }`）を返却。失敗時のエラーは下表 |
+
+POST のエラー応答（クライアントは `src/lib/leaderboard.ts` の `submitLeaderboardScore` で理由ごとに分け、画面に出し分ける）:
+
+| ステータス | `error` | 理由 | 画面の表示 |
+|---|---|---|---|
+| 400 | `invalid name` | 名前に使えない文字がある・長さが範囲外 | 使えない文字が含まれています |
+| 400 | `inappropriate name` | NG ワードを含む | この名前は登録できません |
+| 400 | `invalid score` / `invalid stage` / `invalid mode` | スコア・ステージ・モードが不正、またはスコア上限を超えた | 送信に失敗しました |
+| 429 | `too many requests` | 同じ IP からの投稿が1分間の上限を超えた | 投稿が集中しています。1分ほど待ってからもう一度お試しください |
+| 503 | `submission disabled` | `SCORES_SUBMISSION_DISABLED=1` で投稿を停止中 | 現在スコアの投稿を停止しています |
+| 500 | `Failed to submit score` | Firestore のエラーなど | 送信に失敗しました |
 
 ### 4.4 サーバーサイドバリデーション（チート対策）
 `src/app/api/scores/route.ts` でリクエストを以下の観点で検証する。
@@ -186,7 +208,7 @@ Firebase Admin SDK のサービスアカウントキーは `FIREBASE_SERVICE_ACC
 | `SCORES_SUBMISSION_DISABLED` | 任意 | `1` にするとスコア投稿を止める（POST が `{ error: 'submission disabled' }` を503で返し、画面に「現在スコアの投稿を停止しています」と出る）。荒らされたときの緊急停止用。ランキングの閲覧はそのまま |
 
 ### 4.7 UI コンポーネント
-`src/components/Leaderboard.tsx` は固定の論理解像度（390×844）上にオーバーレイ表示するコンポーネント。NORMAL / EXTRA をタブで切り替えられる。ホーム画面の RANKING ボタンと、結果画面（`ResultScreen.tsx`）の「ランキングを見る」ボタンから呼び出される。自分のスコアは黄色（`#FFFF00`）でハイライトされる。
+`src/components/Leaderboard.tsx` は固定の論理解像度（390×844）上にオーバーレイ表示するコンポーネント。NORMAL / EXTRA をタブで切り替えられる。ホーム画面の RANKING ボタンと、結果画面（`ResultScreen.tsx`）の「ランキングを見る」ボタンから呼び出される。投稿した自分のエントリ（ドキュメントIDが一致する1件）だけが黄色（`#FFFF00`）でハイライトされる。
 
 スコア投稿フロー（名前入力・送信・順位表示）は `ScoreSubmit.tsx` にまとめている。EASY モードでは表示しない。
 
@@ -205,3 +227,9 @@ Firebase Admin SDK のサービスアカウントキーは `FIREBASE_SERVICE_ACC
 ### 5.2 環境変数・インフラ
 - 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` は Vercel ダッシュボードで Production / Preview / Development の3環境すべてに設定されています。
 - Next.js の API Routes (`/api/scores`) は Vercel Functions (Fluid Compute) として自動的にプロビジョニングされ、サーバーレス環境で実行されます。
+- Node.js のバージョンは `package.json` の `engines`（`22.x`）で指定しています（firebase-admin 14 が Node 22 以上を必要とするため）。
+
+### 5.3 CI・依存パッケージの管理
+- **GitHub Actions**（`.github/workflows/ci.yml`）: `dev` / `main` への push と PR のたびに、`npm ci` → `npm audit --omit=dev --audit-level=high`（本番の依存に high 以上の脆弱性があれば失敗）→ `npm test` → `npm run lint` → `npm run build` を実行します。
+- **Dependabot**（`.github/dependabot.yml`）: npm は毎週、GitHub Actions は毎月、`dev` 宛てに更新 PR を作ります。minor / patch の更新は1つの PR にまとめます。CI が通っていればマージして構いません。
+- Next.js に同梱されている postcss は、`package.json` の `overrides` で新しい版に上げています（脆弱性対策）。Next.js を更新したときは、この指定が不要になっていないか確認してください。
