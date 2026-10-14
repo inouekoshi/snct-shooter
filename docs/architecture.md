@@ -26,6 +26,7 @@ src/
 │   ├── Leaderboard.tsx       # ランキング表示UI (NORMAL / EXTRA タブ付きオーバーレイ)
 │   ├── StatsModal.tsx        # プレイ履歴・統計 (オーバーレイ)
 │   ├── RotatePrompt.tsx      # デバイスが横向きの場合に縦持ちを促すコンポーネント
+│   ├── useViewportScale.ts   # 画面の高さに合わせた表示倍率を返すフック (スタート画面・ゲーム画面で共用)
 │   └── buttonStyles.ts       # 共通ボタンスタイル
 ├── lib/
 │   ├── firestore.ts          # Firebase Admin SDK の初期化とFirestore操作 (サーバーサイド専用)
@@ -36,8 +37,8 @@ src/
 │   ├── __tests__/            # leaderboard・ngWords・rateLimit・firestore のユニットテスト
 │   └── game/                 # ゲームのコアロジック群
 │       ├── engine.ts         # ゲームループ・状態遷移・スポーン・当たり処理の統括
-│       ├── state.ts          # State Machine の型定義
-│       ├── constants.ts      # 論理解像度などの共通定数
+│       ├── state.ts          # State Machine の型定義、一時停止できる状態の判定、状態からのステージ番号の取得
+│       ├── constants.ts      # 論理解像度 (CANVAS_WIDTH / CANVAS_HEIGHT) などの共通定数
 │       ├── difficulty.ts     # ステージ・モード別の難易度パラメータ
 │       ├── player.ts         # 自機の移動・武器レベル別の弾の発射
 │       ├── enemy.ts          # 敵 (雑魚・攻撃型・回復・ボス) の生成・挙動・描画
@@ -55,7 +56,7 @@ src/
 │       └── __tests__/        # Vitest のユニットテスト
 └── public/
     ├── manifest.json         # PWAの設定メタデータ
-    └── icons/                # PWAアプリアイコン群
+    └── icons/                # PWAアプリアイコン (PNG)
 ```
 
 ルートには以下の Firebase / Vercel 設定ファイルも含まれます。
@@ -96,7 +97,7 @@ LICENSE                       # MIT License
 
 ### 2.3 描画システム (Canvas API)
 React のステートを用いずに、直接 HTML Canvas 2D API (`GameCanvas.tsx`) を操作して描画します。
-- **解像度戦略**: 論理解像度 (390 × 844) を基本とし、デバイスの `devicePixelRatio` に乗じて実描画サイズを決定しています。
+- **解像度戦略**: 論理解像度 (390 × 844) を基本とし、デバイスの `devicePixelRatio` に乗じて実描画サイズを決定しています。コードでは `constants.ts` の `CANVAS_WIDTH` / `CANVAS_HEIGHT` を使い、数値を直接書きません。
 - これにより、様々なスマートフォンでもRetinaディスプレイ対応の高画質で表示されます。
 
 ### 2.4 タッチ入力処理
@@ -105,7 +106,7 @@ Reactの合成イベント (SyntheticEvent) ではなく、ネイティブの `T
 - 入力情報を一度バッファ (`touch.ts`) に保存し、ゲームループの `update()` フェーズで反映させています。
 
 ### 2.4.1 モジュールの分担
-`engine.ts` はゲームループと状態遷移の統括に専念し、個々の処理は次のモジュールに任せています。
+`engine.ts` はゲームループと状態遷移の統括に専念し、個々の処理は次のモジュールに任せています。`update` は状態ごとの関数に分かれています（戦闘中の `updateBattle`、演出中の `updateBossAppearing`・`updateStageClear`、`updatePowerUpSelect`、`updateCountdown`）。
 
 - **ロジック**（Canvas に依存しない純粋な関数。`__tests__/` でユニットテスト済み）: `difficulty.ts`、`powerup.ts`、`collision.ts` の命中処理、`player.ts` の発射パターン、`guard.ts` のオートガードのゲージ、`effects.ts` のパーティクル・揺れの更新
 - **描画**: 各モジュールの `render*` 関数と、画面全体に重ねる演出をまとめた `overlays.ts`

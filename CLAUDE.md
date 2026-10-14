@@ -34,7 +34,7 @@
 - `main`: 本番。直接コミットせず、`dev` からマージする
 - タスクは GitHub Issues で管理（一覧と全体像は `docs/tasks.md`）
 - `dev`: 開発用。push すると Vercel のプレビュー環境（固定URL、README 参照）に自動デプロイされる
-- Firestore のコレクションは `VERCEL_ENV` で自動切替（本番 `scores`・`scores_extra` / それ以外は末尾に `_dev`）
+- Firestore のコレクションは `VERCEL_ENV` で自動切替（本番 `scores`・`scores_extra`・`rate_limits` / それ以外は末尾に `_dev`）
 - 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` が必要（ローカルは `.env.local`）。任意で `NG_WORDS`（NG ワード追加）・`SCORES_RATE_LIMIT_PER_MINUTE`（IP ごとの投稿上限、既定20）・`SCORES_SUBMISSION_DISABLED=1`（投稿の緊急停止）。一覧は `docs/architecture.md` §4.6
 - コミット前に `npm test`・`npm run lint`・`npm run build` が通ることを確認する
 - `dev` / `main` への push と PR では GitHub Actions（`.github/workflows/ci.yml`）が同じ3つと `npm audit --omit=dev --audit-level=high`（本番の依存の脆弱性チェック）を自動実行する
@@ -63,6 +63,7 @@ canvas.style.height = '844px'
 ctx.scale(devicePixelRatio, devicePixelRatio)
 // 座標計算はすべて 390×844 基準
 ```
+コードでは `src/lib/game/constants.ts` の `CANVAS_WIDTH` / `CANVAS_HEIGHT` を使い、390・844 を直接書かない。
 
 ### ゲームループ（delta-time + クランプ）
 ```typescript
@@ -120,6 +121,7 @@ type GameState =
 | 自機弾速 | 600px/秒（強化で +120） | 1080px/秒（上限） |
 | 武器レベル | 1 | 3（ツイン → 3-Way）。EXTRA は 5（5-Way → 貫通レーザー） |
 | 残機 | 3 | 上限なし |
+| オートガードのゲージ | 0（雑魚敵 +1、攻撃敵 +3） | 満タン: EASY 20 / NORMAL 30 / EXTRA 60 |
 | 移動可能範囲 | Canvas端から 20px パディング | — |
 | 雑魚敵（通常）当たり判定 | 半径 15px | — |
 | 攻撃敵当たり判定 | 半径 20px | — |
