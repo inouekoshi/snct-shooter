@@ -4,19 +4,21 @@ import { NextRequest } from 'next/server'
 vi.mock('@/lib/firestore', () => ({
   getTopScores: vi.fn(),
   addScore: vi.fn(),
+  consumeSubmissionQuota: vi.fn(),
 }))
 
 import { GET, POST } from '../route'
-import { getTopScores, addScore } from '@/lib/firestore'
+import { getTopScores, addScore, consumeSubmissionQuota } from '@/lib/firestore'
 
 const get = (query = '') => GET(new NextRequest(`http://localhost/api/scores${query}`))
 
-const post = (body: unknown) =>
-  POST(new NextRequest('http://localhost/api/scores', { method: 'POST', body: JSON.stringify(body) }))
+const post = (body: unknown, headers: Record<string, string> = {}) =>
+  POST(new NextRequest('http://localhost/api/scores', { method: 'POST', body: JSON.stringify(body), headers }))
 
 beforeEach(() => {
   vi.mocked(getTopScores).mockReset()
   vi.mocked(addScore).mockReset().mockResolvedValue({ rank: 3, id: 'doc1' })
+  vi.mocked(consumeSubmissionQuota).mockReset().mockResolvedValue(true)
 })
 
 describe('GET /api/scores', () => {
@@ -141,6 +143,46 @@ describe('POST /api/scores', () => {
     expect(res.status).toBe(503)
     expect(await res.json()).toEqual({ error: 'submission disabled' })
     expect(addScore).not.toHaveBeenCalled()
+  })
+
+  describe('投稿回数の制限', () => {
+    const valid = { name: 'a', score: 100, stage: 1 }
+
+    it('IPごとに上限（既定は1分20件）を確認してから保存する', async () => {
+      const res = await post(valid, { 'x-forwarded-for': '203.0.113.5, 10.0.0.1' })
+      expect(res.status).toBe(200)
+      expect(consumeSubmissionQuota).toHaveBeenCalledWith(expect.stringMatching(/^[0-9a-f]{64}$/), 20)
+    })
+
+    it('上限に達していたら保存せず429を返す', async () => {
+      vi.mocked(consumeSubmissionQuota).mockResolvedValue(false)
+      const res = await post(valid, { 'x-forwarded-for': '203.0.113.5' })
+      expect(res.status).toBe(429)
+      expect(await res.json()).toEqual({ error: 'too many requests' })
+      expect(addScore).not.toHaveBeenCalled()
+    })
+
+    it('IPが分からなければ制限しない', async () => {
+      expect((await post(valid)).status).toBe(200)
+      expect(consumeSubmissionQuota).not.toHaveBeenCalled()
+    })
+
+    it('SCORES_RATE_LIMIT_PER_MINUTE で上限を変えられ、0なら制限しない', async () => {
+      vi.stubEnv('SCORES_RATE_LIMIT_PER_MINUTE', '5')
+      await post(valid, { 'x-forwarded-for': '203.0.113.5' })
+      expect(consumeSubmissionQuota).toHaveBeenLastCalledWith(expect.any(String), 5)
+
+      vi.mocked(consumeSubmissionQuota).mockClear()
+      vi.stubEnv('SCORES_RATE_LIMIT_PER_MINUTE', '0')
+      expect((await post(valid, { 'x-forwarded-for': '203.0.113.5' })).status).toBe(200)
+      expect(consumeSubmissionQuota).not.toHaveBeenCalled()
+      vi.unstubAllEnvs()
+    })
+
+    it('不正な投稿は回数に数えない', async () => {
+      await post({ name: '', score: 100, stage: 1 }, { 'x-forwarded-for': '203.0.113.5' })
+      expect(consumeSubmissionQuota).not.toHaveBeenCalled()
+    })
   })
 
   it('保存に失敗したら500を返す', async () => {

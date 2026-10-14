@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app'
 import { getFirestore, Timestamp } from 'firebase-admin/firestore'
 import type { LeaderboardBoard, LeaderboardEntry } from './leaderboard'
+import { consumeRateLimit, RATE_LIMIT_WINDOW_MS, type RateLimitWindow } from './rateLimit'
 
 function initFirebase() {
   if (getApps().length === 0) {
@@ -45,4 +46,24 @@ export async function addScore(
   })
   const higher = await collection.where('score', '>', entry.score).count().get()
   return { rank: higher.data().count + 1, id: ref.id }
+}
+
+const RATE_LIMIT_DOC_TTL_MS = RATE_LIMIT_WINDOW_MS * 60
+
+export async function consumeSubmissionQuota(clientKey: string, limit: number): Promise<boolean> {
+  const db = initFirebase()
+  const ref = db.collection(`rate_limits${ENV_SUFFIX}`).doc(clientKey)
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    const current = snap.exists ? (snap.data() as RateLimitWindow) : undefined
+    const { allowed, next } = consumeRateLimit(current, Date.now(), limit)
+    if (allowed) {
+      tx.set(ref, {
+        windowStart: next.windowStart,
+        count: next.count,
+        expiresAt: Timestamp.fromMillis(next.windowStart + RATE_LIMIT_DOC_TTL_MS),
+      })
+    }
+    return allowed
+  })
 }

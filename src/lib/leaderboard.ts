@@ -55,7 +55,7 @@ export async function fetchLeaderboard(board: LeaderboardBoard, submittedId?: st
 
 export type SubmitScoreResult =
   | { ok: true; rank: number; id: string }
-  | { ok: false; reason: 'invalid_name' | 'inappropriate_name' | 'disabled' | 'failed' }
+  | { ok: false; reason: 'invalid_name' | 'inappropriate_name' | 'disabled' | 'rate_limited' | 'failed' }
 
 export async function submitLeaderboardScore(
   entry: { name: string; score: number; stage: number },
@@ -72,6 +72,7 @@ export async function submitLeaderboardScore(
     if (data.error === 'invalid name') return { ok: false, reason: 'invalid_name' }
     if (data.error === 'inappropriate name') return { ok: false, reason: 'inappropriate_name' }
     if (data.error === 'submission disabled') return { ok: false, reason: 'disabled' }
+    if (data.error === 'too many requests') return { ok: false, reason: 'rate_limited' }
     return { ok: false, reason: 'failed' }
   } catch {
     return { ok: false, reason: 'failed' }

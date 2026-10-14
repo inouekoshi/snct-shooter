@@ -30,8 +30,9 @@ src/
 │   ├── firestore.ts          # Firebase Admin SDK の初期化とFirestore操作 (サーバーサイド専用)
 │   ├── leaderboard.ts        # ランキング種別・エントリ型・スコア上限・名前チェック・順位表示・API呼び出し
 │   ├── ngWords.ts            # 名前の NG ワード判定 (サーバーサイドのみ)
+│   ├── rateLimit.ts          # IP ごとの投稿回数の制限 (サーバーサイドのみ)
 │   ├── playerName.ts         # プレイヤー名の localStorage 保存
-│   ├── __tests__/            # leaderboard・ngWords のユニットテスト
+│   ├── __tests__/            # leaderboard・ngWords・rateLimit・firestore のユニットテスト
 │   └── game/                 # ゲームのコアロジック群
 │       ├── engine.ts         # ゲームループ・状態遷移・スポーン・当たり処理の統括
 │       ├── state.ts          # State Machine の型定義
@@ -133,6 +134,7 @@ Firestore コレクションはデプロイ環境（`VERCEL_ENV`）に応じて�
 |---|---|---|
 | NORMAL | `scores` | `scores_dev` |
 | EXTRA | `scores_extra` | `scores_extra_dev` |
+| 投稿回数の制限（ランキングではない） | `rate_limits` | `rate_limits_dev` |
 
 ```
 scores / scores_extra (または *_dev)/{auto-id}
@@ -140,6 +142,11 @@ scores / scores_extra (または *_dev)/{auto-id}
   score: number      // スコア
   stage: number      // 到達ステージ
   createdAt: Timestamp
+
+rate_limits (または rate_limits_dev)/{IPのSHA-256ハッシュ}
+  windowStart: number  // 1分間の数え始め（ミリ秒）
+  count: number        // その1分間の投稿数
+  expiresAt: Timestamp // 1時間後。Firestore の TTL ポリシーを設定すれば自動で消える（任意）
 ```
 
 ランキング取得時は `orderBy('score', 'desc').limit(20)` でトップ20を取得します。
@@ -155,6 +162,7 @@ scores / scores_extra (または *_dev)/{auto-id}
 `src/app/api/scores/route.ts` でリクエストを以下の観点で検証する。
 
 - **名前**: 正規表現 `/^[\p{L}\p{N}\s\-_.]{1,10}$/u` に一致するUnicode文字・数字・一部記号のみ。判定は `src/lib/leaderboard.ts` の `isValidPlayerName` をクライアント（入力中の案内）とサーバーで共有する
+- **投稿回数の制限**: 入力チェックを通った投稿だけを、送信元 IP ごとに1分間20件までに制限し、超えたら `{ error: 'too many requests' }` を429で返す（`src/lib/rateLimit.ts`、`firestore.ts` の `consumeSubmissionQuota`）。高専祭の会場では多くの来場者が同じ Wi-Fi（同じ IP）から投稿するため、正当な投稿を弾かないよう上限はゆるくし、スクリプトによる大量投稿だけを止める。IP はハッシュ化して保存し、生の IP は残さない。回数は Firestore のトランザクションで数えるので、投稿ごとに読み書きが1回ずつ増える。IP が分からない場合（ローカル開発など）は制限しない
 - **NG ワード**: `src/lib/ngWords.ts` の `containsNgWord` で不適切な名前を弾く（サーバーのみ）。環境変数 `NG_WORDS` で語を追加できる。詳細は [spec.md §2.11](spec.md#211-オンラインリーダーボード)
 - **スコア**: 0以上9,999,999以下の整数
 - **モード**: `normal` / `extra`（省略時は `normal`）以外は400エラー
@@ -173,6 +181,7 @@ Firebase Admin SDK のサービスアカウントキーは `FIREBASE_SERVICE_ACC
 |---|---|---|
 | `FIREBASE_SERVICE_ACCOUNT_KEY` | ランキングを使うなら必須 | Firebase Admin SDK のサービスアカウントキー（1行JSON） |
 | `NG_WORDS` | 任意 | 名前の NG ワードを追加する（カンマ区切り、部分一致）。イベント中に新しい荒らしが出たときの追加用 |
+| `SCORES_RATE_LIMIT_PER_MINUTE` | 任意 | 1つの IP から1分間に投稿できる件数（既定 20）。`0` で制限なし。会場で正当な投稿が弾かれるようなら上げる |
 | `SCORES_SUBMISSION_DISABLED` | 任意 | `1` にするとスコア投稿を止める（POST が `{ error: 'submission disabled' }` を503で返し、画面に「現在スコアの投稿を停止しています」と出る）。荒らされたときの緊急停止用。ランキングの閲覧はそのまま |
 
 ### 4.7 UI コンポーネント

@@ -82,6 +82,11 @@ describe('submitLeaderboardScore', () => {
     await expect(submit()).resolves.toEqual({ ok: false, reason: 'disabled' })
   })
 
+  it('投稿回数の上限に達していたら rate_limited', async () => {
+    mockFetch(429, { error: 'too many requests' })
+    await expect(submit()).resolves.toEqual({ ok: false, reason: 'rate_limited' })
+  })
+
   it('サーバーエラーなら failed', async () => {
     mockFetch(500, { error: 'Failed to submit score' })
     await expect(submit()).resolves.toEqual({ ok: false, reason: 'failed' })

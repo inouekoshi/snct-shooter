@@ -24,11 +24,15 @@ const NAME_REJECTED_MESSAGES = {
 
 type NameRejectedReason = keyof typeof NAME_REJECTED_MESSAGES
 
+const SUBMIT_FAILED_MESSAGE = '送信に失敗しました'
+const RATE_LIMITED_MESSAGE = '投稿が集中しています。1分ほど待ってからもう一度お試しください'
+
 export default function ScoreSubmit({ score, stage, board, onSubmitted, onShowLeaderboard }: Props) {
   const [submitState, setSubmitState] = useState<SubmitState>('idle')
   const [playerName, setPlayerName] = useState('')
   const [myRank, setMyRank] = useState<number | null>(null)
   const [rejectedReason, setRejectedReason] = useState<NameRejectedReason | null>(null)
+  const [errorMessage, setErrorMessage] = useState(SUBMIT_FAILED_MESSAGE)
 
   useEffect(() => {
     setPlayerName(loadPlayerName())
@@ -42,7 +46,8 @@ export default function ScoreSubmit({ score, stage, board, onSubmitted, onShowLe
       setMyRank(result.rank)
       setSubmitState('done')
       onSubmitted(result.id)
-    } else if (result.reason === 'failed') {
+    } else if (result.reason === 'failed' || result.reason === 'rate_limited') {
+      setErrorMessage(result.reason === 'rate_limited' ? RATE_LIMITED_MESSAGE : SUBMIT_FAILED_MESSAGE)
       setSubmitState('error')
     } else if (result.reason === 'disabled') {
       setSubmitState('disabled')
@@ -138,7 +143,7 @@ export default function ScoreSubmit({ score, stage, board, onSubmitted, onShowLe
   }
   return (
     <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-      <p style={{ fontSize: '14px', color: '#FF4444' }}>送信に失敗しました</p>
+      <p style={{ fontSize: '14px', color: '#FF4444' }}>{errorMessage}</p>
       <button
         onClick={() => setSubmitState('inputting')}
         style={{ ...BTN_OUTLINE, fontSize: '14px', padding: '8px 16px' }}

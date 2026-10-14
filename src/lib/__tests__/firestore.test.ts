@@ -7,13 +7,18 @@ const mocks = vi.hoisted(() => {
   const topGet = vi.fn()
   const limit = vi.fn(() => ({ get: topGet }))
   const orderBy = vi.fn(() => ({ limit }))
-  const collection = vi.fn(() => ({ add, where, orderBy }))
+  const doc = vi.fn((id: string) => ({ id }))
+  const collection = vi.fn(() => ({ add, where, orderBy, doc }))
+  const txGet = vi.fn()
+  const txSet = vi.fn()
+  const runTransaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({ get: txGet, set: txSet }))
   class Timestamp {
     constructor(private ms: number) {}
     static now() { return new Timestamp(1234) }
+    static fromMillis(ms: number) { return new Timestamp(ms) }
     toMillis() { return this.ms }
   }
-  return { add, countGet, where, topGet, limit, orderBy, collection, Timestamp }
+  return { add, countGet, where, topGet, limit, orderBy, doc, collection, txGet, txSet, runTransaction, Timestamp }
 })
 
 vi.mock('firebase-admin/app', () => ({
@@ -23,14 +28,15 @@ vi.mock('firebase-admin/app', () => ({
 }))
 
 vi.mock('firebase-admin/firestore', () => ({
-  getFirestore: () => ({ collection: mocks.collection }),
+  getFirestore: () => ({ collection: mocks.collection, runTransaction: mocks.runTransaction }),
   Timestamp: mocks.Timestamp,
 }))
 
-import { addScore, getTopScores } from '../firestore'
+import { addScore, getTopScores, consumeSubmissionQuota } from '../firestore'
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useRealTimers()
 })
 
 describe('addScore', () => {
@@ -64,5 +70,23 @@ describe('getTopScores', () => {
     ])
     expect(mocks.orderBy).toHaveBeenCalledWith('score', 'desc')
     expect(mocks.limit).toHaveBeenCalledWith(20)
+  })
+})
+
+describe('consumeSubmissionQuota', () => {
+  it('記録がなければ1件目として保存して許可する', async () => {
+    vi.useFakeTimers({ now: 100_000 })
+    mocks.txGet.mockResolvedValue({ exists: false })
+    await expect(consumeSubmissionQuota('hash1', 20)).resolves.toBe(true)
+    expect(mocks.collection).toHaveBeenCalledWith('rate_limits_dev')
+    expect(mocks.doc).toHaveBeenCalledWith('hash1')
+    expect(mocks.txSet).toHaveBeenCalledWith({ id: 'hash1' }, expect.objectContaining({ windowStart: 100_000, count: 1 }))
+  })
+
+  it('同じ1分の中で上限に達していたら保存せず拒否する', async () => {
+    vi.useFakeTimers({ now: 130_000 })
+    mocks.txGet.mockResolvedValue({ exists: true, data: () => ({ windowStart: 100_000, count: 20 }) })
+    await expect(consumeSubmissionQuota('hash1', 20)).resolves.toBe(false)
+    expect(mocks.txSet).not.toHaveBeenCalled()
   })
 })

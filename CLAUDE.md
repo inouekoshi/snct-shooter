@@ -35,7 +35,7 @@
 - タスクは GitHub Issues で管理（一覧と全体像は `docs/tasks.md`）
 - `dev`: 開発用。push すると Vercel のプレビュー環境（固定URL、README 参照）に自動デプロイされる
 - Firestore のコレクションは `VERCEL_ENV` で自動切替（本番 `scores`・`scores_extra` / それ以外は末尾に `_dev`）
-- 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` が必要（ローカルは `.env.local`）。任意で `NG_WORDS`（NG ワード追加）・`SCORES_SUBMISSION_DISABLED=1`（投稿の緊急停止）。一覧は `docs/architecture.md` §4.6
+- 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` が必要（ローカルは `.env.local`）。任意で `NG_WORDS`（NG ワード追加）・`SCORES_RATE_LIMIT_PER_MINUTE`（IP ごとの投稿上限、既定20）・`SCORES_SUBMISSION_DISABLED=1`（投稿の緊急停止）。一覧は `docs/architecture.md` §4.6
 - コミット前に `npm test`・`npm run lint`・`npm run build` が通ることを確認する
 - `dev` / `main` への push と PR では GitHub Actions（`.github/workflows/ci.yml`）が同じ3つを自動実行する
 
@@ -46,7 +46,7 @@
 - `src/app/`: 画面（`page.tsx` スタート、`game/page.tsx` ゲーム）と API（`api/scores/route.ts`）
 - `src/components/`: `GameCanvas`・`HUD`・`ResultScreen`・`ScoreSubmit`・`Leaderboard`・`StatsModal` など
 - `src/lib/game/`: ゲームロジック。`engine.ts` が統括し、難易度（`difficulty.ts`）・パワーアップ（`powerup.ts`）・命中処理（`collision.ts`）・演出（`effects.ts`・`overlays.ts`）などに分割。共通定数は `constants.ts`
-- `src/lib/`: `firestore.ts`（サーバー専用）、`leaderboard.ts`（ランキング種別・スコア上限・名前チェック・順位表示・API 呼び出し）、`ngWords.ts`（NG ワード判定、サーバー専用）、`playerName.ts`
+- `src/lib/`: `firestore.ts`（サーバー専用）、`leaderboard.ts`（ランキング種別・スコア上限・名前チェック・順位表示・API 呼び出し）、`ngWords.ts`（NG ワード判定、サーバー専用）、`rateLimit.ts`（投稿回数の制限、サーバー専用）、`playerName.ts`
 - 展開に影響する乱数は `src/lib/game/random.ts` のシード付き乱数から取る（`Math.random` を直接使わない。見た目だけの乱数は除く）
 - テスト: `src/**/__tests__/*.test.ts`
 
@@ -103,6 +103,7 @@ type GameState =
 ### ランキング API のチート対策
 - 名前: 1〜10文字（文字・数字・空白・`-_.`）。判定は `isValidPlayerName` をクライアントとサーバーで共有
 - 名前の NG ワード（`ngWords.ts`）は 400（`inappropriate name`）
+- 投稿は IP ごとに1分20件まで（`rateLimit.ts`）。超えたら 429（`too many requests`）
 - ステージ別スコア上限（`src/lib/leaderboard.ts` の `SCORE_LIMITS`、NORMAL / EXTRA 別）を超える投稿は 400
 - ゲームバランスを変えたら上限値も見直すこと
 
