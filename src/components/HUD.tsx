@@ -1,15 +1,23 @@
 'use client'
 
 import type { DifficultyMode } from '@/lib/game/difficulty'
+import { GUARD_COLOR } from '@/lib/game/guard'
 
 interface HUDProps {
   score: number
   lives: number
   stage: number
+  guardValue: number
+  guardMax: number
   mode?: DifficultyMode
 }
 
-export default function HUD({ score, lives, stage, mode }: HUDProps) {
+const GUARD_BAR_WIDTH = 64
+
+export default function HUD({ score, lives, stage, guardValue, guardMax, mode }: HUDProps) {
+  const guardReady = guardValue >= guardMax
+  const guardRatio = Math.min(1, guardValue / guardMax)
+
   return (
     <div
       style={{
@@ -47,6 +55,22 @@ export default function HUD({ score, lives, stage, mode }: HUDProps) {
       <div style={{ textAlign: 'right' }}>
         <div>LIVES</div>
         <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{'♥'.repeat(Math.max(0, lives))}</div>
+        <div style={{ marginTop: '6px', fontSize: '11px', color: guardReady ? GUARD_COLOR : '#888' }}>
+          {guardReady ? 'GUARD READY' : 'GUARD'}
+        </div>
+        <div
+          style={{
+            marginTop: '2px',
+            marginLeft: 'auto',
+            width: `${GUARD_BAR_WIDTH}px`,
+            height: '6px',
+            border: `1px solid ${GUARD_COLOR}`,
+            borderRadius: '3px',
+            overflow: 'hidden',
+          }}
+        >
+          <div style={{ width: `${guardRatio * 100}%`, height: '100%', background: GUARD_COLOR }} />
+        </div>
       </div>
     </div>
   )

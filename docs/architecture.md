@@ -48,6 +48,7 @@ src/
 │       ├── overlays.ts       # BOSS / STAGE CLEAR / POWER UP / カウントダウンの描画
 │       ├── score.ts          # ハイスコアと EXTRA 解禁状態の localStorage 保存
 │       ├── stats.ts          # プレイ履歴・統計の localStorage 保存
+│       ├── guard.ts          # オートガードのゲージと発動判定・自機周りの輪の描画
 │       ├── random.ts         # シード付き乱数生成器 (mulberry32)
 │       ├── touch.ts          # タッチ入力イベントバッファ
 │       └── __tests__/        # Vitest のユニットテスト
@@ -101,7 +102,7 @@ Reactの合成イベント (SyntheticEvent) ではなく、ネイティブの `T
 ### 2.4.1 モジュールの分担
 `engine.ts` はゲームループと状態遷移の統括に専念し、個々の処理は次のモジュールに任せています。
 
-- **ロジック**（Canvas に依存しない純粋な関数。`__tests__/` でユニットテスト済み）: `difficulty.ts`、`powerup.ts`、`collision.ts` の命中処理、`player.ts` の発射パターン、`effects.ts` のパーティクル・揺れの更新
+- **ロジック**（Canvas に依存しない純粋な関数。`__tests__/` でユニットテスト済み）: `difficulty.ts`、`powerup.ts`、`collision.ts` の命中処理、`player.ts` の発射パターン、`guard.ts` のオートガードのゲージ、`effects.ts` のパーティクル・揺れの更新
 - **描画**: 各モジュールの `render*` 関数と、画面全体に重ねる演出をまとめた `overlays.ts`
 - **乱数**: 展開に影響する乱数（敵の出現位置・攻撃敵のジグザグ判定と射撃タイミング・回復敵の出現間隔・パワーアップの選択肢）は、`random.ts` のシード付き乱数生成器から取る。`engine.start(seed)` でシードを指定でき、省略時はランダムなシードになる（`engine.seed` で参照可能）。見た目だけの乱数（背景の星・破片・画面揺れ）は `Math.random` のまま。スコアアタック・ゴーストに向けた下準備で、完全な再現には更新間隔の固定も必要（[#21](https://github.com/inouekoshi/snct-shooter/issues/21)）
 - **保存**: `score.ts`（ハイスコア・EXTRA 解禁）、`stats.ts`（統計）、`lib/playerName.ts`（名前）。いずれも localStorage が使えない環境では例外を出さずに無視する

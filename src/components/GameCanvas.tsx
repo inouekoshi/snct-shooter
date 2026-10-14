@@ -20,7 +20,7 @@ interface Props {
 export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<ReturnType<typeof createGameEngine> | null>(null)
-  const [hudData, setHudData] = useState({ score: 0, lives: 3, stage: 1 })
+  const [hudData, setHudData] = useState({ score: 0, lives: 3, stage: 1, guardValue: 0, guardMax: 1 })
   const [stateType, setStateType] = useState<GameState['type']>('IDLE')
 
   useEffect(() => {
@@ -62,6 +62,8 @@ export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Pr
           score: score.total,
           lives: engine.lives,
           stage: stageNum,
+          guardValue: engine.guard.value,
+          guardMax: engine.guard.max,
         })
       },
       mode
@@ -105,7 +107,14 @@ export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Pr
         style={{ display: 'block', touchAction: 'none', userSelect: 'none' }}
       />
 
-      <HUD score={hudData.score} lives={hudData.lives} stage={hudData.stage} mode={mode} />
+      <HUD
+        score={hudData.score}
+        lives={hudData.lives}
+        stage={hudData.stage}
+        guardValue={hudData.guardValue}
+        guardMax={hudData.guardMax}
+        mode={mode}
+      />
 
       {showPauseButton && (
         <button

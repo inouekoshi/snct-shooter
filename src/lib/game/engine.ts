@@ -24,6 +24,10 @@ import {
 import { createScoreState, saveHighScore, unlockExtra, type ScoreState } from './score'
 import { createKillCounts, saveGameRecord, type KillCounts } from './stats'
 import { createStars, updateStars, renderStars } from './background'
+import {
+  createGuardGauge, chargeGuard, consumeGuard, isGuardReady, renderGuardAura,
+  GUARD_COLOR, GUARD_INVINCIBLE_DURATION, type GuardGauge,
+} from './guard'
 import { generatePowerUpOptions } from './powerup'
 import {
   renderBossAppearing, renderStageClear, renderPowerUpSelect, renderCountdown,
@@ -40,6 +44,7 @@ export interface GameEngine {
   state: GameState
   score: ScoreState
   lives: number
+  guard: GuardGauge
   seed: number
   start: (seed?: number) => void
   stop: () => void
@@ -60,6 +65,7 @@ export function createGameEngine(
   let score = createScoreState(0)
   const stageCount = getStageCount(mode)
   let player = createPlayer(mode)
+  let guard = createGuardGauge(mode)
   let bossVariant: BossVariant = 'normal'
   let enemies: Enemy[] = []
   let bullets: Bullet[] = []
@@ -120,6 +126,24 @@ export function createGameEngine(
     hitPlayer(player)
     spawnExplosion(particles, player.x, player.y, '#FFFFFF', EXPLOSION_SMALL)
     triggerShake(shake, SHAKE_PLAYER_HIT.intensity, SHAKE_PLAYER_HIT.duration)
+  }
+
+  function activateGuard(): void {
+    bullets = bullets.filter((b) => !b.isEnemy)
+    player.invincibleTimer = GUARD_INVINCIBLE_DURATION
+    spawnExplosion(particles, player.x, player.y, GUARD_COLOR, EXPLOSION_LARGE)
+    triggerShake(shake, SHAKE_PLAYER_HIT.intensity, SHAKE_PLAYER_HIT.duration)
+  }
+
+  function takeHit(stage: number): boolean {
+    if (consumeGuard(guard)) {
+      activateGuard()
+      return false
+    }
+    damagePlayer()
+    if (player.lives > 0) return false
+    triggerGameOver(stage)
+    return true
   }
 
   function triggerGameOver(stage: number): void {
@@ -235,6 +259,7 @@ export function createGameEngine(
         score.total += e.score
         stageScore += e.score
         killCounts[e.kind]++
+        chargeGuard(guard, e.kind)
         if (e.kind === 'heal') {
           player.lives += 1
         }
@@ -281,31 +306,23 @@ export function createGameEngine(
       }
 
       if (!isPlayerInvincible(player)) {
-        for (const b of bullets) {
-          if (!b.isEnemy) continue
-          if (circlesOverlap(b.x, b.y, b.radius, player.x, player.y, PLAYER_RADIUS)) {
-            damagePlayer()
-            bullets = bullets.filter((x) => x !== b)
-            if (player.lives <= 0) {
-              triggerGameOver(stage)
-              return
-            }
-            break
-          }
+        const hitBullet = bullets.find((b) =>
+          b.isEnemy && circlesOverlap(b.x, b.y, b.radius, player.x, player.y, PLAYER_RADIUS)
+        )
+        if (hitBullet) {
+          bullets = bullets.filter((x) => x !== hitBullet)
+          if (takeHit(stage)) return
         }
+      }
 
-        for (const e of enemies) {
-          if (e.kind === 'boss') continue
-          if (circlesOverlap(e.x, e.y, e.radius, player.x, player.y, PLAYER_RADIUS)) {
-            explodeEnemy(e)
-            damagePlayer()
-            enemies = enemies.filter((x) => x !== e)
-            if (player.lives <= 0) {
-              triggerGameOver(stage)
-              return
-            }
-            break
-          }
+      if (!isPlayerInvincible(player)) {
+        const hitEnemy = enemies.find((e) =>
+          e.kind !== 'boss' && circlesOverlap(e.x, e.y, e.radius, player.x, player.y, PLAYER_RADIUS)
+        )
+        if (hitEnemy) {
+          explodeEnemy(hitEnemy)
+          enemies = enemies.filter((x) => x !== hitEnemy)
+          if (takeHit(stage)) return
         }
       }
 
@@ -352,6 +369,7 @@ export function createGameEngine(
       renderEnemies(ctx, enemies)
       renderParticles(ctx, particles)
       renderBullets(ctx, bullets)
+      if (isGuardReady(guard)) renderGuardAura(ctx, player.x, player.y, prevTime)
       renderPlayer(ctx, player)
     }
 
@@ -367,6 +385,7 @@ export function createGameEngine(
     get state() { return state },
     get score() { return score },
     get lives() { return player.lives },
+    get guard() { return guard },
     get seed() { return seed },
 
     start(initialSeed = createRandomSeed()) {
@@ -374,6 +393,7 @@ export function createGameEngine(
       rng = createSeededRng(seed)
       hasTap = false
       player = createPlayer(mode)
+      guard = createGuardGauge(mode)
       score = createScoreState(score.highScore)
       killCounts = createKillCounts()
       startStage(1)
