@@ -14,7 +14,7 @@ export const SCORE_LIMITS: Record<LeaderboardBoard, Record<number, number>> = {
     5: 14500, 6: 18800, 7: 23500, 8: 28600,
   },
   extra: {
-    1: 5200, 2: 11300, 3: 19000,
+    1: 4600, 2: 9900, 3: 16800,
   },
 }
 

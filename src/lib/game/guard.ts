@@ -14,7 +14,7 @@ const GUARD_POINTS: Record<EnemyKind, number> = {
 const GUARD_GAUGE_MAX: Record<DifficultyMode, number> = {
   EASY: 20,
   NORMAL: 30,
-  EXTRA: 60,
+  EXTRA: 45,
 }
 
 export interface GuardGauge {

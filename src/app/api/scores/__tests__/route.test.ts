@@ -65,9 +65,9 @@ describe('POST /api/scores', () => {
 
   describe('EXTRAランキング', () => {
     it('mode=extra ならEXTRA用に保存する', async () => {
-      const res = await post({ name: 'a', score: 5000, stage: 1, mode: 'extra' })
+      const res = await post({ name: 'a', score: 4000, stage: 1, mode: 'extra' })
       expect(res.status).toBe(200)
-      expect(addScore).toHaveBeenCalledWith({ name: 'a', score: 5000, stage: 1 }, 'extra')
+      expect(addScore).toHaveBeenCalledWith({ name: 'a', score: 4000, stage: 1 }, 'extra')
     })
 
     it('ステージは1〜3のみ', async () => {
@@ -75,9 +75,9 @@ describe('POST /api/scores', () => {
     })
 
     it('EXTRA用のスコア上限で判定する', async () => {
-      expect((await post({ name: 'a', score: 19000, stage: 3, mode: 'extra' })).status).toBe(200)
-      expect((await post({ name: 'a', score: 19001, stage: 3, mode: 'extra' })).status).toBe(400)
-      expect((await post({ name: 'a', score: 5201, stage: 1, mode: 'extra' })).status).toBe(400)
+      expect((await post({ name: 'a', score: 16800, stage: 3, mode: 'extra' })).status).toBe(200)
+      expect((await post({ name: 'a', score: 16801, stage: 3, mode: 'extra' })).status).toBe(400)
+      expect((await post({ name: 'a', score: 4601, stage: 1, mode: 'extra' })).status).toBe(400)
     })
 
     it('不明なmodeは400', async () => {

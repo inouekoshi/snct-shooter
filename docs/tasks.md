@@ -16,7 +16,7 @@
 
 | Issue | 内容 |
 |---|---|
-| [#1](https://github.com/inouekoshi/snct-shooter/issues/1) | EXTRAモードの難易度を実機プレイで調整する |
+| [#1](https://github.com/inouekoshi/snct-shooter/issues/1) | EXTRAモードの難易度を実機プレイで調整する。2026-10-16 に「難しすぎる」という声を受けて全体を下げた。遊んだ人の反応を見て、必要ならさらに調整する |
 | [#4](https://github.com/inouekoshi/snct-shooter/issues/4) | 上位100件より下のスコアの順位が正しく表示されない（`count()` で実装済み。実際の Firestore での確認待ち。100位より下まで見るにはテストデータが要る） |
 
 ### Phase 4: オンライン化（マルチプレイ・ソーシャル機能）
