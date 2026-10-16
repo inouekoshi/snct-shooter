@@ -26,7 +26,7 @@
     "@serwist/next": "^9.5.13",
     "@tailwindcss/postcss": "^4.2.4",
     "firebase-admin": "^14.5.0",
-    "next": "^15.5.27",
+    "next": "^16.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "serwist": "^9.5.13"
