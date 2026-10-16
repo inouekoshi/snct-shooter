@@ -4,31 +4,54 @@ import { NextRequest } from 'next/server'
 vi.mock('@/lib/firestore', () => ({
   getTopScores: vi.fn(),
   addScore: vi.fn(),
+  consumeSubmissionQuota: vi.fn(),
 }))
 
 import { GET, POST } from '../route'
-import { getTopScores, addScore } from '@/lib/firestore'
+import { getTopScores, addScore, consumeSubmissionQuota } from '@/lib/firestore'
 
-const post = (body: unknown) =>
-  POST(new NextRequest('http://localhost/api/scores', { method: 'POST', body: JSON.stringify(body) }))
+const get = (query = '') => GET(new NextRequest(`http://localhost/api/scores${query}`))
+
+const post = (body: unknown, headers: Record<string, string> = {}) =>
+  POST(new NextRequest('http://localhost/api/scores', { method: 'POST', body: JSON.stringify(body), headers }))
 
 beforeEach(() => {
   vi.mocked(getTopScores).mockReset()
-  vi.mocked(addScore).mockReset().mockResolvedValue({ rank: 3 })
+  vi.mocked(addScore).mockReset().mockResolvedValue({ rank: 3, id: 'doc1' })
+  vi.mocked(consumeSubmissionQuota).mockReset().mockResolvedValue(true)
 })
 
 describe('GET /api/scores', () => {
   it('トップ20を返す', async () => {
     vi.mocked(getTopScores).mockResolvedValue([{ name: 'a', score: 100, stage: 1 }])
-    const res = await GET()
+    const res = await get()
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ entries: [{ name: 'a', score: 100, stage: 1 }] })
-    expect(getTopScores).toHaveBeenCalledWith(20)
+    expect(getTopScores).toHaveBeenCalledWith(20, 'normal')
   })
 
-  it('Firestoreエラー時は500を返す', async () => {
+  it('成功時はCDNで10秒キャッシュするヘッダーを付ける', async () => {
+    vi.mocked(getTopScores).mockResolvedValue([])
+    const res = await get()
+    expect(res.headers.get('Cache-Control')).toBe('public, s-maxage=10, stale-while-revalidate=50')
+  })
+
+  it('mode=extra ならEXTRAランキングを返す', async () => {
+    vi.mocked(getTopScores).mockResolvedValue([])
+    expect((await get('?mode=extra')).status).toBe(200)
+    expect(getTopScores).toHaveBeenCalledWith(20, 'extra')
+  })
+
+  it('不明なmodeは400', async () => {
+    expect((await get('?mode=hard')).status).toBe(400)
+    expect(getTopScores).not.toHaveBeenCalled()
+  })
+
+  it('Firestoreエラー時は500を返し、キャッシュさせない', async () => {
     vi.mocked(getTopScores).mockRejectedValue(new Error('down'))
-    expect((await GET()).status).toBe(500)
+    const res = await get()
+    expect(res.status).toBe(500)
+    expect(res.headers.get('Cache-Control')).toBeNull()
   })
 })
 
@@ -36,19 +59,62 @@ describe('POST /api/scores', () => {
   it('正しい入力なら名前をtrimして保存し順位を返す', async () => {
     const res = await post({ name: '  たろう ', score: 1500, stage: 1 })
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ ok: true, rank: 3 })
-    expect(addScore).toHaveBeenCalledWith({ name: 'たろう', score: 1500, stage: 1 })
+    expect(await res.json()).toEqual({ ok: true, rank: 3, id: 'doc1' })
+    expect(addScore).toHaveBeenCalledWith({ name: 'たろう', score: 1500, stage: 1 }, 'normal')
+  })
+
+  describe('EXTRAランキング', () => {
+    it('mode=extra ならEXTRA用に保存する', async () => {
+      const res = await post({ name: 'a', score: 5000, stage: 1, mode: 'extra' })
+      expect(res.status).toBe(200)
+      expect(addScore).toHaveBeenCalledWith({ name: 'a', score: 5000, stage: 1 }, 'extra')
+    })
+
+    it('ステージは1〜3のみ', async () => {
+      expect((await post({ name: 'a', score: 100, stage: 4, mode: 'extra' })).status).toBe(400)
+    })
+
+    it('EXTRA用のスコア上限で判定する', async () => {
+      expect((await post({ name: 'a', score: 19000, stage: 3, mode: 'extra' })).status).toBe(200)
+      expect((await post({ name: 'a', score: 19001, stage: 3, mode: 'extra' })).status).toBe(400)
+      expect((await post({ name: 'a', score: 5201, stage: 1, mode: 'extra' })).status).toBe(400)
+    })
+
+    it('不明なmodeは400', async () => {
+      expect((await post({ name: 'a', score: 100, stage: 1, mode: 'hard' })).status).toBe(400)
+      expect(addScore).not.toHaveBeenCalled()
+    })
   })
 
   it.each([
     ['空文字', ''],
     ['11文字', 'abcdefghijk'],
     ['記号', '<script>'],
+    ['絵文字', 'たろう😀'],
     ['文字列以外', 123],
-  ])('不正な名前（%s）は400', async (_, name) => {
+  ])('不正な名前（%s）は400で invalid name を返す', async (_, name) => {
     const res = await post({ name, score: 100, stage: 1 })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'invalid name' })
     expect(addScore).not.toHaveBeenCalled()
+  })
+
+  it('NGワードを含む名前は400で inappropriate name を返す', async () => {
+    const res = await post({ name: 'チンコ', score: 100, stage: 1 })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'inappropriate name' })
+    expect(addScore).not.toHaveBeenCalled()
+  })
+
+  it('環境変数 NG_WORDS で追加したNGワードも弾く', async () => {
+    vi.stubEnv('NG_WORDS', 'ほげ,ふが')
+    expect((await post({ name: 'ほげたろう', score: 100, stage: 1 })).status).toBe(400)
+    vi.unstubAllEnvs()
+    expect((await post({ name: 'ほげたろう', score: 100, stage: 1 })).status).toBe(200)
+  })
+
+  it('日本語10文字の名前は受け付ける', async () => {
+    expect((await post({ name: 'ひらがなカタカナ漢字', score: 100, stage: 1 })).status).toBe(200)
   })
 
   it.each([
@@ -68,6 +134,55 @@ describe('POST /api/scores', () => {
     expect((await post({ name: 'a', score: 2001, stage: 1 })).status).toBe(400)
     expect((await post({ name: 'a', score: 28600, stage: 8 })).status).toBe(200)
     expect((await post({ name: 'a', score: 28601, stage: 8 })).status).toBe(400)
+  })
+
+  it('SCORES_SUBMISSION_DISABLED=1 なら保存せず503を返す', async () => {
+    vi.stubEnv('SCORES_SUBMISSION_DISABLED', '1')
+    const res = await post({ name: 'a', score: 100, stage: 1 })
+    vi.unstubAllEnvs()
+    expect(res.status).toBe(503)
+    expect(await res.json()).toEqual({ error: 'submission disabled' })
+    expect(addScore).not.toHaveBeenCalled()
+  })
+
+  describe('投稿回数の制限', () => {
+    const valid = { name: 'a', score: 100, stage: 1 }
+
+    it('IPごとに上限（既定は1分20件）を確認してから保存する', async () => {
+      const res = await post(valid, { 'x-forwarded-for': '203.0.113.5, 10.0.0.1' })
+      expect(res.status).toBe(200)
+      expect(consumeSubmissionQuota).toHaveBeenCalledWith(expect.stringMatching(/^[0-9a-f]{64}$/), 20)
+    })
+
+    it('上限に達していたら保存せず429を返す', async () => {
+      vi.mocked(consumeSubmissionQuota).mockResolvedValue(false)
+      const res = await post(valid, { 'x-forwarded-for': '203.0.113.5' })
+      expect(res.status).toBe(429)
+      expect(await res.json()).toEqual({ error: 'too many requests' })
+      expect(addScore).not.toHaveBeenCalled()
+    })
+
+    it('IPが分からなければ制限しない', async () => {
+      expect((await post(valid)).status).toBe(200)
+      expect(consumeSubmissionQuota).not.toHaveBeenCalled()
+    })
+
+    it('SCORES_RATE_LIMIT_PER_MINUTE で上限を変えられ、0なら制限しない', async () => {
+      vi.stubEnv('SCORES_RATE_LIMIT_PER_MINUTE', '5')
+      await post(valid, { 'x-forwarded-for': '203.0.113.5' })
+      expect(consumeSubmissionQuota).toHaveBeenLastCalledWith(expect.any(String), 5)
+
+      vi.mocked(consumeSubmissionQuota).mockClear()
+      vi.stubEnv('SCORES_RATE_LIMIT_PER_MINUTE', '0')
+      expect((await post(valid, { 'x-forwarded-for': '203.0.113.5' })).status).toBe(200)
+      expect(consumeSubmissionQuota).not.toHaveBeenCalled()
+      vi.unstubAllEnvs()
+    })
+
+    it('不正な投稿は回数に数えない', async () => {
+      await post({ name: '', score: 100, stage: 1 }, { 'x-forwarded-for': '203.0.113.5' })
+      expect(consumeSubmissionQuota).not.toHaveBeenCalled()
+    })
   })
 
   it('保存に失敗したら500を返す', async () => {

@@ -1,21 +1,32 @@
 'use client'
 
+import type { DifficultyMode } from '@/lib/game/difficulty'
+import { GUARD_COLOR } from '@/lib/game/guard'
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/game/constants'
+
 interface HUDProps {
   score: number
   lives: number
   stage: number
-  mode?: import('@/lib/game/difficulty').DifficultyMode
+  guardValue: number
+  guardMax: number
+  mode?: DifficultyMode
 }
 
-export default function HUD({ score, lives, stage, mode }: HUDProps) {
+const GUARD_BAR_WIDTH = 64
+
+export default function HUD({ score, lives, stage, guardValue, guardMax, mode }: HUDProps) {
+  const guardReady = guardValue >= guardMax
+  const guardRatio = Math.min(1, guardValue / guardMax)
+
   return (
     <div
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
-        width: '390px',
-        height: '844px',
+        width: `${CANVAS_WIDTH}px`,
+        height: `${CANVAS_HEIGHT}px`,
         pointerEvents: 'none',
         padding: '12px 16px',
         boxSizing: 'border-box',
@@ -38,10 +49,29 @@ export default function HUD({ score, lives, stage, mode }: HUDProps) {
         {mode === 'EASY' && (
           <div style={{ color: '#00CC88', fontSize: '12px', marginTop: '4px', textShadow: 'none' }}>EASY MODE</div>
         )}
+        {mode === 'EXTRA' && (
+          <div style={{ color: '#FF2266', fontSize: '12px', marginTop: '4px', textShadow: 'none' }}>EXTRA MODE</div>
+        )}
       </div>
       <div style={{ textAlign: 'right' }}>
         <div>LIVES</div>
         <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{'♥'.repeat(Math.max(0, lives))}</div>
+        <div style={{ marginTop: '6px', fontSize: '11px', color: guardReady ? GUARD_COLOR : '#888' }}>
+          {guardReady ? 'GUARD READY' : 'GUARD'}
+        </div>
+        <div
+          style={{
+            marginTop: '2px',
+            marginLeft: 'auto',
+            width: `${GUARD_BAR_WIDTH}px`,
+            height: '6px',
+            border: `1px solid ${GUARD_COLOR}`,
+            borderRadius: '3px',
+            overflow: 'hidden',
+          }}
+        >
+          <div style={{ width: `${guardRatio * 100}%`, height: '100%', background: GUARD_COLOR }} />
+        </div>
       </div>
     </div>
   )

@@ -1,9 +1,9 @@
-import type { GameState, PowerUpOption } from './state'
+import { isPausable, type GameState } from './state'
 import type { TouchBuffer } from './touch'
 import {
   createPlayer, updatePlayer, renderPlayer, canFire, resetFireTimer,
   hitPlayer, isPlayerInvincible, resetPlayerPosition, applyUpgrade,
-  PLAYER_RADIUS,
+  firePlayerBullets, PLAYER_RADIUS,
 } from './player'
 import {
   createNormalEnemy, createAttackEnemy, createBoss, createHealEnemy,
@@ -15,100 +15,44 @@ import {
   SHAKE_PLAYER_HIT, SHAKE_BOSS_DEFEAT, type Particle,
 } from './effects'
 import {
-  createPlayerBullet, updateBullets, removeOffscreenBullets, renderBullets, type Bullet,
+  updateBullets, removeOffscreenBullets, renderBullets, type Bullet,
 } from './bullet'
-import { circlesOverlap } from './collision'
-import { getDifficulty, type DifficultyMode } from './difficulty'
-import { createScoreState, saveHighScore, type ScoreState } from './score'
+import { circlesOverlap, applyPlayerBulletHits, findTouchedEnemies } from './collision'
+import {
+  getDifficulty, getStageCount, getStageClearBonus,
+  type BossVariant, type DifficultyMode, type DifficultyParams,
+} from './difficulty'
+import { createScoreState, saveHighScore, unlockExtra, type ScoreState } from './score'
 import { createKillCounts, saveGameRecord, type KillCounts } from './stats'
+import { createStars, updateStars, renderStars } from './background'
+import {
+  createGuardGauge, chargeGuard, consumeGuard, isGuardReady, renderGuardAura,
+  GUARD_COLOR, GUARD_INVINCIBLE_DURATION, type GuardGauge,
+} from './guard'
+import { generatePowerUpOptions } from './powerup'
+import {
+  renderBossAppearing, renderStageClear, renderPowerUpSelect, renderCountdown,
+} from './overlays'
+import { CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_CENTER_X } from './constants'
+import { createSeededRng, createRandomSeed, type Rng } from './random'
 
-const STAR_COUNT = 80
 const BOSS_APPEARING_DURATION = 1500
+const BOSS_APPEARING_INVINCIBLE_DURATION = BOSS_APPEARING_DURATION + 200
 const STAGE_CLEAR_DURATION = 2000
-const STAGE_CLEAR_FADE_IN = 600
-const CANVAS_W = 390
-const CANVAS_H = 844
-const CANVAS_CX = CANVAS_W / 2
+const RESUME_COUNTDOWN_DURATION = 2000
+const MAX_FRAME_DELTA = 100
+const HEAL_SPAWN_MIN_INTERVAL = 15000
+const HEAL_SPAWN_INTERVAL_RANGE = 10000
 
-interface Star {
-  x: number
-  y: number
-  r: number
-  speed: number
-}
-
-function createStars(): Star[] {
-  return Array.from({ length: STAR_COUNT }, () => ({
-    x: Math.random() * CANVAS_W,
-    y: Math.random() * CANVAS_H,
-    r: 0.5 + Math.random() * 1.5,
-    speed: 20 + Math.random() * 40,
-  }))
-}
-
-function updateStars(stars: Star[], delta: number): void {
-  const dt = delta / 1000
-  for (const s of stars) {
-    s.y += s.speed * dt
-    if (s.y > CANVAS_H) {
-      s.y = -2
-      s.x = Math.random() * CANVAS_W
-    }
-  }
-}
-
-function renderStars(ctx: CanvasRenderingContext2D, stars: Star[]): void {
-  ctx.fillStyle = '#FFFFFF'
-  for (const s of stars) {
-    ctx.beginPath()
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
-    ctx.fill()
-  }
-}
-
-function generateOptions(stage: number, weaponLevel: number): [PowerUpOption, PowerUpOption] {
-  const left: PowerUpOption = stage >= 5 
-    ? { kind: 'HP_2', label: 'HP +2', sub: '残機を2回復' }
-    : { kind: 'HP', label: 'HP +1', sub: '残機を1回復' }
-  const candidates: PowerUpOption[] = [
-    { kind: 'FIRE_RATE', label: '連射強化', sub: '発射間隔 -30ms' },
-    { kind: 'BULLET_SPEED', label: '弾速強化', sub: '弾速 +120px/秒' },
-  ]
-  
-  let right: PowerUpOption;
-  if ((stage === 3 || stage === 5) && weaponLevel < 3) {
-    right = { kind: 'WEAPON_UPGRADE', label: '武器強化', sub: '攻撃パターンが進化' }
-  } else {
-    right = candidates[Math.floor(Math.random() * candidates.length)]
-  }
-  
-  return [left, right]
-}
-
-function drawOptionBox(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number,
-  opt: PowerUpOption, color: string
-): void {
-  ctx.fillStyle = color
-  ctx.strokeStyle = '#FFFFFF'
-  ctx.lineWidth = 2
-  ctx.fillRect(x, y, w, h)
-  ctx.strokeRect(x, y, w, h)
-
-  ctx.fillStyle = '#FFFFFF'
-  ctx.font = 'bold 22px sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText(opt.label, x + w / 2, y + h / 2 - 10)
-  ctx.font = '16px sans-serif'
-  ctx.fillText(opt.sub, x + w / 2, y + h / 2 + 20)
-}
+type StateOf<T extends GameState['type']> = Extract<GameState, { type: T }>
 
 export interface GameEngine {
   state: GameState
   score: ScoreState
   lives: number
-  start: () => void
+  guard: GuardGauge
+  seed: number
+  start: (seed?: number) => void
   stop: () => void
   pause: () => void
   resume: () => void
@@ -125,7 +69,10 @@ export function createGameEngine(
 
   let state: GameState = { type: 'IDLE' }
   let score = createScoreState(0)
-  let player = createPlayer()
+  const stageCount = getStageCount(mode)
+  let player = createPlayer(mode)
+  let guard = createGuardGauge(mode)
+  let bossVariant: BossVariant = 'normal'
   let enemies: Enemy[] = []
   let bullets: Bullet[] = []
   let particles: Particle[] = []
@@ -140,10 +87,11 @@ export function createGameEngine(
   let running = false
   let prevTouchActive = false
   let tapX = 0
-  let tapY = 0
   let hasTap = false
   let healSpawnTimer = 0
   let powerUpCanAcceptTap = false
+  let seed = 0
+  let rng: Rng = Math.random
 
   function notify(): void {
     onStateChange(state, score)
@@ -159,10 +107,28 @@ export function createGameEngine(
     stageScore = 0
     enemySpawnTimer = 0
     normalsSinceLastAttack = 0
-    healSpawnTimer = 15000 + Math.random() * 10000
+    healSpawnTimer = nextHealSpawnInterval()
     enemies = []
     bullets = []
     setState({ type: 'PLAYING', stage })
+  }
+
+  function nextHealSpawnInterval(): number {
+    return HEAL_SPAWN_MIN_INTERVAL + rng() * HEAL_SPAWN_INTERVAL_RANGE
+  }
+
+  function clearEnemyBullets(): void {
+    bullets = bullets.filter((b) => !b.isEnemy)
+  }
+
+  function commitHighScore(): void {
+    if (score.total <= score.highScore) return
+    score.highScore = score.total
+    saveHighScore(score.highScore, mode)
+  }
+
+  function recordPlay(stage: number): void {
+    saveGameRecord({ score: score.total, stage, playedAt: Date.now(), kills: { ...killCounts }, mode })
   }
 
   function explodeEnemy(e: Enemy): void {
@@ -182,18 +148,47 @@ export function createGameEngine(
     triggerShake(shake, SHAKE_PLAYER_HIT.intensity, SHAKE_PLAYER_HIT.duration)
   }
 
-  function triggerGameOver(stage: number): void {
-    if (score.total > score.highScore) {
-      score.highScore = score.total
-      saveHighScore(score.highScore)
+  function activateGuard(): void {
+    clearEnemyBullets()
+    player.invincibleTimer = GUARD_INVINCIBLE_DURATION
+    spawnExplosion(particles, player.x, player.y, GUARD_COLOR, EXPLOSION_LARGE)
+    triggerShake(shake, SHAKE_PLAYER_HIT.intensity, SHAKE_PLAYER_HIT.duration)
+  }
+
+  function takeHit(stage: number): boolean {
+    if (consumeGuard(guard)) {
+      activateGuard()
+      return false
     }
-    saveGameRecord({ score: score.total, stage, playedAt: Date.now(), kills: { ...killCounts } })
+    damagePlayer()
+    if (player.lives > 0) return false
+    triggerGameOver(stage)
+    return true
+  }
+
+  function triggerGameOver(stage: number): void {
+    commitHighScore()
+    recordPlay(stage)
     setState({ type: 'GAME_OVER', score: score.total, stage })
+  }
+
+  function startLoop(): void {
+    running = true
+    prevTime = 0
+    animId = requestAnimationFrame((t) => {
+      prevTime = t
+      animId = requestAnimationFrame(loop)
+    })
+  }
+
+  function stopLoop(): void {
+    running = false
+    cancelAnimationFrame(animId)
   }
 
   function loop(currentTime: number): void {
     if (!running) return
-    const delta = Math.min(currentTime - prevTime, 100)
+    const delta = Math.min(currentTime - prevTime, MAX_FRAME_DELTA)
     prevTime = currentTime
 
     update(delta)
@@ -208,221 +203,209 @@ export function createGameEngine(
     if (prevTouchActive && !touch.active) {
       hasTap = true
       tapX = touch.x
-      tapY = touch.y
     }
     prevTouchActive = touch.active
 
     if (state.type === 'COUNTDOWN') {
-      const next = state.remaining - delta
-      if (next <= 0) {
-        const resumeTo = state.resumeTo
-        if (resumeTo.type === 'BOSS_APPEARING') {
-          setState({ type: 'BOSS_APPEARING', stage: resumeTo.stage, elapsed: 0 })
-        } else if (resumeTo.type === 'STAGE_CLEAR') {
-          setState({ type: 'STAGE_CLEAR', stage: resumeTo.stage, elapsed: 0 })
-        } else {
-          setState(resumeTo)
-        }
-      } else {
-        setState({ ...state, remaining: next })
-      }
-      hasTap = false
+      updateCountdown(state, delta)
       return
     }
-
-    if (state.type === 'PAUSED') return
-    if (state.type === 'IDLE' || state.type === 'GAME_OVER' || state.type === 'GAME_CLEAR') return
+    if (state.type === 'PAUSED' || state.type === 'IDLE' || state.type === 'GAME_OVER' || state.type === 'GAME_CLEAR') return
 
     particles = updateParticles(particles, delta)
     updateShake(shake, delta)
 
     if (state.type === 'POWER_UP_SELECT') {
-      if (!powerUpCanAcceptTap && !touch.active) {
-        powerUpCanAcceptTap = true
-        hasTap = false
-      }
-      if (powerUpCanAcceptTap && hasTap) {
-        hasTap = false
-        const chosen = tapX < CANVAS_CX ? state.options[0] : state.options[1]
-        applyUpgrade(player, chosen.kind)
-        resetPlayerPosition(player)
-        startStage(state.stage + 1)
-      }
+      updatePowerUpSelect(state)
       return
     }
 
     updatePlayer(player, touch, delta)
 
-    if (state.type === 'PLAYING' || state.type === 'BOSS_FIGHT') {
-      const stage = (state as { stage: number }).stage
+    if (state.type === 'BOSS_APPEARING') updateBossAppearing(state, delta)
+    else if (state.type === 'STAGE_CLEAR') updateStageClear(state, delta)
+    else updateBattle(state, delta)
+  }
 
-      if (canFire(player)) {
-        const speed = player.bulletSpeed
-        const y = player.y - 15
-        
-        if (player.weaponLevel === 1) {
-          bullets.push(createPlayerBullet(player.x, y, 0, -speed))
-        } else if (player.weaponLevel === 2) {
-          bullets.push(createPlayerBullet(player.x - 8, y, 0, -speed))
-          bullets.push(createPlayerBullet(player.x + 8, y, 0, -speed))
-        } else {
-          const angle = 15 * Math.PI / 180
-          const vx = speed * Math.sin(angle)
-          const vy = speed * Math.cos(angle)
-          bullets.push(createPlayerBullet(player.x, y, 0, -speed))
-          bullets.push(createPlayerBullet(player.x, y, -vx, -vy))
-          bullets.push(createPlayerBullet(player.x, y, vx, -vy))
-        }
-        
-        resetFireTimer(player)
-      }
-
-      if (state.type === 'PLAYING') {
-        const diff = getDifficulty(stage, mode)
-        enemySpawnTimer -= delta
-        if (enemySpawnTimer <= 0) {
-          enemySpawnTimer = diff.normalEnemyInterval
-          const ratio = diff.attackEnemySpawnRatio
-          if (ratio > 0 && normalsSinceLastAttack >= ratio) {
-            enemies.push(createAttackEnemy(diff))
-            normalsSinceLastAttack = 0
-          } else {
-            enemies.push(createNormalEnemy(diff))
-            normalsSinceLastAttack++
-          }
-        }
-
-        healSpawnTimer -= delta
-        if (healSpawnTimer <= 0) {
-          healSpawnTimer = 15000 + Math.random() * 10000
-          enemies.push(createHealEnemy())
-        }
-      }
-
-      updateEnemies(enemies, delta, player.x, bullets)
-      updateBullets(bullets, delta)
-      bullets = removeOffscreenBullets(bullets)
-      enemies = removeOffscreenEnemies(enemies)
-
-      const remainingBullets: Bullet[] = []
-      for (const b of bullets) {
-        if (b.isEnemy) {
-          remainingBullets.push(b)
-          continue
-        }
-        let hit = false
-        for (const e of enemies) {
-          if (circlesOverlap(b.x, b.y, b.radius, e.x, e.y, e.radius)) {
-            e.hp -= b.damage
-            hit = true
-            break
-          }
-        }
-        if (!hit) remainingBullets.push(b)
-      }
-      bullets = remainingBullets
-
-      const deadEnemies = enemies.filter((e) => e.hp <= 0)
-      for (const e of deadEnemies) {
-        explodeEnemy(e)
-        score.total += e.score
-        stageScore += e.score
-        killCounts[e.kind]++
-        if (e.kind === 'heal') {
-          player.lives += 1
-        }
-        if (e.kind === 'boss') {
-          score.total += stage * 100
-          if (score.total > score.highScore) {
-            score.highScore = score.total
-            saveHighScore(score.highScore)
-          }
-          if (stage >= 8) {
-            saveGameRecord({ score: score.total, stage, playedAt: Date.now(), kills: { ...killCounts } })
-          }
-          setState({ type: 'STAGE_CLEAR', stage, elapsed: 0 })
-          enemies = []
-          bullets = bullets.filter((b) => !b.isEnemy)
-          return
-        }
-      }
-      enemies = enemies.filter((e) => e.hp > 0)
-
-      if (state.type === 'PLAYING') {
-        const diff = getDifficulty(stage, mode)
-        if (stageScore >= diff.bossScoreThreshold) {
-          const bossEnemy = createBoss(stage, diff)
-          enemies = []
-          bullets = bullets.filter((b) => !b.isEnemy)
-          enemies.push(bossEnemy)
-          setState({ type: 'BOSS_APPEARING', stage, elapsed: 0 })
-          player.invincibleTimer = BOSS_APPEARING_DURATION + 200
-          return
-        }
-      }
-
-      if (!isPlayerInvincible(player)) {
-        for (const b of bullets) {
-          if (!b.isEnemy) continue
-          if (circlesOverlap(b.x, b.y, b.radius, player.x, player.y, PLAYER_RADIUS)) {
-            damagePlayer()
-            bullets = bullets.filter((x) => x !== b)
-            if (player.lives <= 0) {
-              triggerGameOver(stage)
-              return
-            }
-            break
-          }
-        }
-
-        for (const e of enemies) {
-          if (e.kind === 'boss') continue
-          if (circlesOverlap(e.x, e.y, e.radius, player.x, player.y, PLAYER_RADIUS)) {
-            explodeEnemy(e)
-            damagePlayer()
-            enemies = enemies.filter((x) => x !== e)
-            if (player.lives <= 0) {
-              triggerGameOver(stage)
-              return
-            }
-            break
-          }
-        }
-      }
-
-      notify()
+  function updateCountdown(current: StateOf<'COUNTDOWN'>, delta: number): void {
+    hasTap = false
+    const remaining = current.remaining - delta
+    if (remaining > 0) {
+      setState({ ...current, remaining })
+      return
     }
-
-    if (state.type === 'BOSS_APPEARING') {
-      const elapsed = state.elapsed + delta
-      if (elapsed >= BOSS_APPEARING_DURATION) {
-        setState({ type: 'BOSS_FIGHT', stage: state.stage })
-      } else {
-        setState({ ...state, elapsed })
-      }
-    }
-
-    if (state.type === 'STAGE_CLEAR') {
-      const elapsed = state.elapsed + delta
-      if (elapsed >= STAGE_CLEAR_DURATION) {
-        hasTap = false
-        if (state.stage >= 8) {
-          setState({ type: 'GAME_CLEAR', score: score.total, stage: state.stage })
-        } else {
-          powerUpCanAcceptTap = !touch.active
-          setState({ type: 'POWER_UP_SELECT', stage: state.stage, options: generateOptions(state.stage, player.weaponLevel) })
-        }
-      } else {
-        setState({ ...state, elapsed })
-      }
+    const { resumeTo } = current
+    if (resumeTo.type === 'BOSS_APPEARING' || resumeTo.type === 'STAGE_CLEAR') {
+      setState({ ...resumeTo, elapsed: 0 })
+    } else {
+      setState(resumeTo)
     }
   }
 
+  function updatePowerUpSelect(current: StateOf<'POWER_UP_SELECT'>): void {
+    if (!powerUpCanAcceptTap && !touch.active) {
+      powerUpCanAcceptTap = true
+      hasTap = false
+    }
+    if (!powerUpCanAcceptTap || !hasTap) return
+    hasTap = false
+    const chosen = tapX < CANVAS_CENTER_X ? current.options[0] : current.options[1]
+    applyUpgrade(player, chosen.kind)
+    resetPlayerPosition(player)
+    startStage(current.stage + 1)
+  }
+
+  function updateBossAppearing(current: StateOf<'BOSS_APPEARING'>, delta: number): void {
+    const elapsed = current.elapsed + delta
+    if (elapsed >= BOSS_APPEARING_DURATION) {
+      setState({ type: 'BOSS_FIGHT', stage: current.stage })
+    } else {
+      setState({ ...current, elapsed })
+    }
+  }
+
+  function updateStageClear(current: StateOf<'STAGE_CLEAR'>, delta: number): void {
+    const elapsed = current.elapsed + delta
+    if (elapsed < STAGE_CLEAR_DURATION) {
+      setState({ ...current, elapsed })
+      return
+    }
+    hasTap = false
+    const { stage } = current
+    if (stage >= stageCount) {
+      setState({ type: 'GAME_CLEAR', score: score.total, stage })
+      return
+    }
+    powerUpCanAcceptTap = !touch.active
+    setState({ type: 'POWER_UP_SELECT', stage, options: generatePowerUpOptions(stage, player.weaponLevel, mode, rng) })
+  }
+
+  function updateBattle(current: StateOf<'PLAYING' | 'BOSS_FIGHT'>, delta: number): void {
+    const { stage } = current
+    const diff = current.type === 'PLAYING' ? getDifficulty(stage, mode) : null
+
+    if (canFire(player)) {
+      bullets.push(...firePlayerBullets(player))
+      resetFireTimer(player)
+    }
+    if (diff) spawnEnemies(diff, delta)
+
+    updateEnemies(enemies, delta, player.x, bullets)
+    updateBullets(bullets, delta)
+    bullets = removeOffscreenBullets(bullets)
+    enemies = removeOffscreenEnemies(enemies)
+    bullets = applyPlayerBulletHits(bullets, enemies)
+
+    if (resolveDefeatedEnemies(stage)) return
+    if (diff && stageScore >= diff.bossScoreThreshold) {
+      summonBoss(diff, stage)
+      return
+    }
+    collectTouchedHealEnemies()
+    if (resolvePlayerHits(stage)) return
+
+    notify()
+  }
+
+  function spawnEnemies(diff: DifficultyParams, delta: number): void {
+    enemySpawnTimer -= delta
+    if (enemySpawnTimer <= 0) {
+      enemySpawnTimer = diff.normalEnemyInterval
+      const ratio = diff.attackEnemySpawnRatio
+      if (ratio > 0 && normalsSinceLastAttack >= ratio) {
+        enemies.push(createAttackEnemy(diff, rng))
+        normalsSinceLastAttack = 0
+      } else {
+        enemies.push(createNormalEnemy(diff, rng))
+        normalsSinceLastAttack++
+      }
+    }
+
+    healSpawnTimer -= delta
+    if (healSpawnTimer <= 0) {
+      healSpawnTimer = nextHealSpawnInterval()
+      enemies.push(createHealEnemy(rng))
+    }
+  }
+
+  function resolveDefeatedEnemies(stage: number): boolean {
+    for (const e of enemies) {
+      if (e.hp > 0) continue
+      explodeEnemy(e)
+      score.total += e.score
+      stageScore += e.score
+      killCounts[e.kind]++
+      chargeGuard(guard, e.kind)
+      if (e.kind === 'heal') player.lives += 1
+      if (e.kind === 'boss') {
+        defeatBoss(stage)
+        return true
+      }
+    }
+    enemies = enemies.filter((e) => e.hp > 0)
+    return false
+  }
+
+  function defeatBoss(stage: number): void {
+    score.total += getStageClearBonus(stage, mode)
+    commitHighScore()
+    if (stage >= stageCount) {
+      recordPlay(stage)
+      if (mode === 'NORMAL') unlockExtra()
+    }
+    setState({ type: 'STAGE_CLEAR', stage, elapsed: 0 })
+    enemies = []
+    clearEnemyBullets()
+  }
+
+  function summonBoss(diff: DifficultyParams, stage: number): void {
+    bossVariant = diff.bossVariant
+    enemies = [createBoss(diff)]
+    clearEnemyBullets()
+    setState({ type: 'BOSS_APPEARING', stage, elapsed: 0 })
+    player.invincibleTimer = BOSS_APPEARING_INVINCIBLE_DURATION
+  }
+
+  function collectTouchedHealEnemies(): void {
+    const collected = findTouchedEnemies(enemies, player.x, player.y, PLAYER_RADIUS, 'heal')
+    if (collected.length === 0) return
+    for (const e of collected) {
+      explodeEnemy(e)
+      player.lives += 1
+      killCounts.heal++
+    }
+    enemies = enemies.filter((e) => !collected.includes(e))
+  }
+
+  function resolvePlayerHits(stage: number): boolean {
+    if (!isPlayerInvincible(player)) {
+      const hitBullet = bullets.find((b) =>
+        b.isEnemy && circlesOverlap(b.x, b.y, b.radius, player.x, player.y, PLAYER_RADIUS)
+      )
+      if (hitBullet) {
+        bullets = bullets.filter((b) => b !== hitBullet)
+        if (takeHit(stage)) return true
+      }
+    }
+
+    if (!isPlayerInvincible(player)) {
+      const hitEnemy = enemies.find((e) =>
+        e.kind !== 'boss' && circlesOverlap(e.x, e.y, e.radius, player.x, player.y, PLAYER_RADIUS)
+      )
+      if (hitEnemy) {
+        explodeEnemy(hitEnemy)
+        enemies = enemies.filter((e) => e !== hitEnemy)
+        if (takeHit(stage)) return true
+      }
+    }
+
+    return false
+  }
+
   function render(): void {
-    const dpr = window.devicePixelRatio || 1
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H)
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
     ctx.fillStyle = '#000000'
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
     const offset = reduceMotion ? { x: 0, y: 0 } : shakeOffset(shake)
     ctx.save()
@@ -434,107 +417,55 @@ export function createGameEngine(
       renderEnemies(ctx, enemies)
       renderParticles(ctx, particles)
       renderBullets(ctx, bullets)
+      if (isGuardReady(guard)) renderGuardAura(ctx, player.x, player.y, prevTime)
       renderPlayer(ctx, player)
     }
 
     ctx.restore()
 
-    if (state.type === 'BOSS_APPEARING') {
-      ctx.fillStyle = 'rgba(170,0,255,0.3)'
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
-      ctx.fillStyle = '#FFFFFF'
-      ctx.font = 'bold 36px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('BOSS!', CANVAS_CX, 422)
-    }
-
-    if (state.type === 'STAGE_CLEAR') {
-      ctx.fillStyle = `rgba(0,0,0,${0.5 * Math.min(1, state.elapsed / STAGE_CLEAR_FADE_IN)})`
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
-      ctx.fillStyle = '#FFFFFF'
-      ctx.font = 'bold 42px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('STAGE CLEAR!', CANVAS_CX, 400)
-      ctx.font = '24px sans-serif'
-      ctx.fillText(`BONUS +${state.stage * 100}`, CANVAS_CX, 450)
-    }
-
-    if (state.type === 'POWER_UP_SELECT') {
-      ctx.fillStyle = 'rgba(0,0,0,0.75)'
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
-      ctx.fillStyle = '#FFFFFF'
-      ctx.font = 'bold 28px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('POWER UP!', CANVAS_CX, 200)
-      ctx.font = '18px sans-serif'
-      ctx.fillText('どちらかを選んでタップ', CANVAS_CX, 240)
-      drawOptionBox(ctx, 20, 300, 165, 220, state.options[0], '#1A4488')
-      drawOptionBox(ctx, 205, 300, 165, 220, state.options[1], '#885500')
-    }
-
-    if (state.type === 'COUNTDOWN') {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
-      ctx.fillStyle = '#FFFFFF'
-      ctx.font = 'bold 72px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText(String(Math.ceil(state.remaining / 1000)), CANVAS_CX, 450)
-    }
-
-    void dpr
+    if (state.type === 'BOSS_APPEARING') renderBossAppearing(ctx, bossVariant)
+    if (state.type === 'STAGE_CLEAR') renderStageClear(ctx, state.elapsed, getStageClearBonus(state.stage, mode))
+    if (state.type === 'POWER_UP_SELECT') renderPowerUpSelect(ctx, state.options)
+    if (state.type === 'COUNTDOWN') renderCountdown(ctx, state.remaining)
   }
 
   return {
     get state() { return state },
     get score() { return score },
     get lives() { return player.lives },
+    get guard() { return guard },
+    get seed() { return seed },
 
-    start() {
+    start(initialSeed = createRandomSeed()) {
+      seed = initialSeed
+      rng = createSeededRng(seed)
       hasTap = false
-      player = createPlayer()
+      player = createPlayer(mode)
+      guard = createGuardGauge(mode)
       score = createScoreState(score.highScore)
       killCounts = createKillCounts()
       startStage(1)
-      running = true
-      prevTime = 0
-      animId = requestAnimationFrame((t) => {
-        prevTime = t
-        animId = requestAnimationFrame(loop)
-      })
+      startLoop()
     },
 
     stop() {
-      running = false
-      cancelAnimationFrame(animId)
+      stopLoop()
       enemies = []
       bullets = []
       particles = []
     },
 
     pause() {
-      if (
-        state.type === 'PLAYING' ||
-        state.type === 'BOSS_APPEARING' ||
-        state.type === 'BOSS_FIGHT' ||
-        state.type === 'STAGE_CLEAR' ||
-        state.type === 'POWER_UP_SELECT'
-      ) {
-        cancelAnimationFrame(animId)
-        running = false
-        setState({ type: 'PAUSED', resumeTo: state })
-      }
+      const resumeTo = state.type === 'COUNTDOWN' ? state.resumeTo : isPausable(state.type) ? state : null
+      if (!resumeTo) return
+      stopLoop()
+      setState({ type: 'PAUSED', resumeTo })
     },
 
     resume() {
-      if (state.type === 'PAUSED') {
-        setState({ type: 'COUNTDOWN', resumeTo: state.resumeTo, remaining: 2000 })
-        running = true
-        prevTime = 0
-        animId = requestAnimationFrame((t) => {
-          prevTime = t
-          animId = requestAnimationFrame(loop)
-        })
-      }
+      if (state.type !== 'PAUSED') return
+      setState({ type: 'COUNTDOWN', resumeTo: state.resumeTo, remaining: RESUME_COUNTDOWN_DURATION })
+      startLoop()
     },
   }
 }

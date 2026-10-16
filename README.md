@@ -15,23 +15,27 @@
 - **特徴**:
   - 全8ステージ構成のやり応えのあるステージ制
   - 難易度選択（初心者向けのEASY / 標準のNORMAL）
+  - NORMALクリアで解禁される高難度の EXTRA モード（全3ステージ・専用ボス・5-Way / 貫通レーザー）
   - 片手で操作可能なシンプル設計（ドラッグ・スワイプのみで移動、弾は自動連射）
-  - ツイン弾や3-Wayに進化する「武器強化」システム
+  - ツイン弾・3-Way・5-Way・貫通レーザーに進化する「武器強化」システム
+  - 敵を倒してゲージを溜めると、被弾したときに自動で身を守る「オートガード」
   - PWA（Progressive Web App）対応でオフラインでもプレイ可能
-  - オンラインリーダーボード（プレイヤー名を入れてスコア投稿、トップ20表示）※EASYモードは登録対象外
+  - オンラインリーダーボード（プレイヤー名を入れてスコア投稿、トップ20表示。NORMAL / EXTRA 別）※EASYモードは登録対象外
 - **画面表示**: Portrait（縦向き）固定。デバイスのセーフエリアも考慮した設計。
 
 詳細は仕様書 [docs/spec.md](docs/spec.md) を参照してください。
 
 ## 🛠 技術スタック
 
-- **フレームワーク**: Next.js 14 (App Router)
+- **フレームワーク**: Next.js 15 (App Router) + React 19（Node.js 22）
 - **言語**: TypeScript
 - **描画エンジン**: Canvas API + requestAnimationFrame (delta-time ベース制御)
 - **操作制御**: Touch Events API
-- **データ保存（ローカル）**: localStorage（ハイスコア・プレイヤー名）
+- **データ保存（ローカル）**: localStorage（ハイスコア・プレイヤー名・プレイ統計・EXTRA解禁状態）
 - **データ保存（オンライン）**: Firebase Firestore（リーダーボード）+ Firebase Admin SDK（API Routes 経由のみアクセス）
 - **PWA**: Serwist
+- **テスト**: Vitest
+- **Lint / CI**: ESLint・GitHub Actions（脆弱性チェック・テスト・Lint・ビルドを自動実行）・Dependabot（依存の更新 PR を自動作成）
 - **ホスティング**: Vercel（main ブランチ自動デプロイ）
 
 さらに詳しい設計やディレクトリ構成については、アーキテクチャドキュメント [docs/architecture.md](docs/architecture.md) をご覧ください。
@@ -46,11 +50,19 @@
 - 画面上の任意の場所に指を置き、ドラッグすることで自機を移動させます。
 - 弾は自動的に連射されます。タップ等の操作は不要です。
 - 敵の弾や敵本体に当たらないように避けながら、敵を倒してステージを進めましょう。
+- 右下のボタンで一時停止できます。一時停止中は HOME ボタンでタイトルに戻れます。
+- 敵を倒すと右上の GUARD ゲージが溜まります。満タン（GUARD READY）のときに被弾すると、残機の代わりにゲージを使って画面内の敵弾を消します。
+
+### 難易度
+- **EASY**: 初心者向け。敵や弾が遅く、ボスも弱め（ランキング対象外）
+- **NORMAL**: 標準の難易度。全8ステージ
+- **EXTRA**: NORMAL をクリアすると解禁。全3ステージの高難度モードで、5-Way や貫通レーザーが使えます
 
 ### ランキング機能
-- スタート画面の `RANKING` ボタンからトップ20を表示できます。
+- スタート画面の `RANKING` ボタンからトップ20を表示できます。NORMAL と EXTRA はタブで切り替えます。
 - ゲームオーバー / クリア時に「スコアを投稿」→ 名前を入力すると、ランキングに登録されます。
 - 入力した名前は次回プレイ時に自動で復元されます。
+- 名前に使えるのは文字・数字・空白と `- _ .` です。不適切な名前は登録できません。
 
 ## 🚀 ローカルでの開発と起動
 
@@ -62,7 +74,7 @@
    cd snct-shooter
    ```
 
-2. **依存関係のインストール**
+2. **依存関係のインストール**（Node.js 22 が必要です）
    ```bash
    npm install
    ```
@@ -74,8 +86,16 @@
    FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account","project_id":"...",...}
    ```
    ※ ランキング機能を使わない場合は省略可能（ローカルプレイのみで動作）。
+   任意の環境変数（NG ワードの追加・投稿回数の上限・投稿の緊急停止）は [docs/architecture.md §4.6](docs/architecture.md#46-環境変数) を参照してください。
 
-4. **開発サーバーの起動**
+4. **テスト・Lint・ビルドの確認**
+   ```bash
+   npm test
+   npm run lint
+   npm run build
+   ```
+
+5. **開発サーバーの起動**
    ```bash
    npm run dev
    ```
@@ -96,8 +116,8 @@
 
 ### データベースの環境分離
 テストデータが本番のランキングに混入するのを防ぐため、Firestoreの参照先コレクションを自動で切り替えています。
-- Production環境: `scores` コレクションを使用
-- Preview/Development環境: `scores_dev` コレクションを使用
+- Production環境: `scores`（NORMAL）/ `scores_extra`（EXTRA）/ `rate_limits`（投稿回数の制限）コレクションを使用
+- Preview/Development環境: `scores_dev` / `scores_extra_dev` / `rate_limits_dev` コレクションを使用
 
 ※ 環境変数 `FIREBASE_SERVICE_ACCOUNT_KEY` は Vercel ダッシュボードで Production / Preview / Development の3環境すべてに共通で設定されています。
 
@@ -107,7 +127,8 @@
 バグ報告や機能提案はGitHub Issuesへ、プルリクエストによるコードの貢献も募集しております。
 
 開発への参加に関するガイドラインは [CONTRIBUTING.md](CONTRIBUTING.md) をご一読ください。
+今後の開発計画と未完了のタスクは [docs/tasks.md](docs/tasks.md) にまとめています。
 
 ## 📄 ライセンス
 
-このプロジェクトは MIT License のもとで公開されています。（必要に応じて調整してください）
+[MIT License](LICENSE) で公開しています。

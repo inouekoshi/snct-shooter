@@ -1,25 +1,54 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
-import { loadHighScore } from '@/lib/game/score'
+import { loadHighScore, isExtraUnlocked } from '@/lib/game/score'
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/game/constants'
 import RotatePrompt from '@/components/RotatePrompt'
 import Leaderboard from '@/components/Leaderboard'
 import StatsModal from '@/components/StatsModal'
+import { useViewportScale } from '@/components/useViewportScale'
+
+const MENU_BUTTON: CSSProperties = {
+  borderRadius: '8px',
+  fontSize: '16px',
+  fontWeight: 'bold',
+  fontFamily: 'monospace',
+  cursor: 'pointer',
+}
+
+const MODE_BUTTON: CSSProperties = {
+  ...MENU_BUTTON,
+  padding: '16px 20px',
+  letterSpacing: '1px',
+  flex: 1,
+  maxWidth: '140px',
+}
+
+const SUB_BUTTON: CSSProperties = {
+  ...MENU_BUTTON,
+  padding: '10px 36px',
+  background: 'transparent',
+  letterSpacing: '2px',
+}
+
+const EXTRA_WIDTH = '296px'
 
 export default function StartPage() {
   const router = useRouter()
   const [highScore, setHighScore] = useState(0)
-  const [scale, setScale] = useState(1)
+  const [easyHighScore, setEasyHighScore] = useState(0)
+  const [extraUnlocked, setExtraUnlocked] = useState(false)
+  const [extraHighScore, setExtraHighScore] = useState(0)
+  const scale = useViewportScale()
   const [showRanking, setShowRanking] = useState(false)
   const [showStats, setShowStats] = useState(false)
 
   useEffect(() => {
     setHighScore(loadHighScore())
-    const update = () => setScale(Math.min(1, window.innerHeight / 844))
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
+    setEasyHighScore(loadHighScore('EASY'))
+    setExtraUnlocked(isExtraUnlocked())
+    setExtraHighScore(loadHighScore('EXTRA'))
   }, [])
 
   return (
@@ -27,8 +56,8 @@ export default function StartPage() {
       <RotatePrompt />
       <div
         style={{
-          width: '390px',
-          height: '844px',
+          width: `${CANVAS_WIDTH}px`,
+          height: `${CANVAS_HEIGHT}px`,
           transform: `scale(${scale})`,
           transformOrigin: 'top center',
           background: '#000',
@@ -64,74 +93,64 @@ export default function StartPage() {
           <div style={{ display: 'flex', gap: '16px', width: '100%', justifyContent: 'center' }}>
             <button
               onClick={() => router.push('/game?mode=easy')}
-              style={{
-                padding: '16px 20px',
-                background: '#222222',
-                color: '#00CC88',
-                border: '2px solid #00CC88',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                fontFamily: 'monospace',
-                cursor: 'pointer',
-                letterSpacing: '1px',
-                flex: 1,
-                maxWidth: '140px',
-              }}
+              style={{ ...MODE_BUTTON, background: '#222222', color: '#00CC88', border: '2px solid #00CC88' }}
             >
-              EASY<br/><span style={{fontSize: '12px', color: '#888'}}>初心者向け</span>
+              EASY<br/>
+              <span style={{ fontSize: '12px', color: '#888' }}>
+                {easyHighScore > 0 ? `BEST ${easyHighScore.toLocaleString()}` : '初心者向け'}
+              </span>
             </button>
             <button
               onClick={() => router.push('/game?mode=normal')}
-              style={{
-                padding: '16px 20px',
-                background: '#FFFFFF',
-                color: '#000000',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                fontFamily: 'monospace',
-                cursor: 'pointer',
-                letterSpacing: '1px',
-                flex: 1,
-                maxWidth: '140px',
-              }}
+              style={{ ...MODE_BUTTON, background: '#FFFFFF', color: '#000000', border: 'none' }}
             >
               NORMAL<br/><span style={{fontSize: '12px', color: '#666'}}>標準難易度</span>
             </button>
           </div>
+          {extraUnlocked ? (
+            <button
+              onClick={() => router.push('/game?mode=extra')}
+              style={{
+                ...MENU_BUTTON,
+                padding: '12px 20px',
+                background: '#FF2266',
+                color: '#FFFFFF',
+                border: 'none',
+                letterSpacing: '1px',
+                width: EXTRA_WIDTH,
+              }}
+            >
+              EXTRA<br/>
+              <span style={{ fontSize: '12px', color: '#FFD0DC' }}>
+                {extraHighScore > 0 ? `BEST ${extraHighScore.toLocaleString()}` : '全3ステージの高難度モード'}
+              </span>
+            </button>
+          ) : (
+            <div
+              style={{
+                padding: '12px 20px',
+                border: '2px dashed #442233',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#664455',
+                textAlign: 'center',
+                width: EXTRA_WIDTH,
+                boxSizing: 'border-box',
+              }}
+            >
+              🔒 EXTRA<br/>
+              <span style={{ fontSize: '12px' }}>NORMALをクリアで解禁</span>
+            </div>
+          )}
           <button
             onClick={() => setShowRanking(true)}
-            style={{
-              padding: '10px 36px',
-              background: 'transparent',
-              color: '#FFFFFF',
-              border: '2px solid #FFFFFF',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              fontFamily: 'monospace',
-              cursor: 'pointer',
-              letterSpacing: '2px',
-            }}
+            style={{ ...SUB_BUTTON, color: '#FFFFFF', border: '2px solid #FFFFFF' }}
           >
             RANKING
           </button>
           <button
             onClick={() => setShowStats(true)}
-            style={{
-              padding: '10px 36px',
-              background: 'transparent',
-              color: '#AAAAAA',
-              border: '2px solid #555555',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              fontFamily: 'monospace',
-              cursor: 'pointer',
-              letterSpacing: '2px',
-            }}
+            style={{ ...SUB_BUTTON, color: '#AAAAAA', border: '2px solid #555555' }}
           >
             STATS
           </button>
@@ -161,7 +180,29 @@ export default function StartPage() {
   )
 }
 
+interface BackgroundStar {
+  size: number
+  left: number
+  top: number
+  opacity: number
+}
+
+function createBackgroundStars(count: number): BackgroundStar[] {
+  return Array.from({ length: count }, () => ({
+    size: 1 + Math.random() * 2,
+    left: Math.random() * 100,
+    top: Math.random() * 100,
+    opacity: 0.3 + Math.random() * 0.7,
+  }))
+}
+
 function StarBackground() {
+  const [stars, setStars] = useState<BackgroundStar[]>([])
+
+  useEffect(() => {
+    setStars(createBackgroundStars(60))
+  }, [])
+
   return (
     <div
       style={{
@@ -171,18 +212,18 @@ function StarBackground() {
         pointerEvents: 'none',
       }}
     >
-      {Array.from({ length: 60 }, (_, i) => (
+      {stars.map((star, i) => (
         <div
           key={i}
           style={{
             position: 'absolute',
-            width: `${1 + Math.random() * 2}px`,
-            height: `${1 + Math.random() * 2}px`,
+            width: `${star.size}px`,
+            height: `${star.size}px`,
             background: '#FFF',
             borderRadius: '50%',
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            opacity: 0.3 + Math.random() * 0.7,
+            left: `${star.left}%`,
+            top: `${star.top}%`,
+            opacity: star.opacity,
           }}
         />
       ))}

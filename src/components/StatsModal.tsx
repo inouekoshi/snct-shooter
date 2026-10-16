@@ -2,9 +2,22 @@
 
 import { useEffect, useState } from 'react'
 import { loadStats, totalKillCount, type LifetimeStats } from '@/lib/game/stats'
+import type { DifficultyMode } from '@/lib/game/difficulty'
 
 interface Props {
   onClose: () => void
+}
+
+const MODE_TAG_PREFIXES: Record<DifficultyMode, string> = {
+  EASY: 'EZ',
+  NORMAL: 'S',
+  EXTRA: 'EX',
+}
+
+const MODE_TAG_COLORS: Record<DifficultyMode, string> = {
+  EASY: '#00CC88',
+  NORMAL: '#666',
+  EXTRA: '#FF2266',
 }
 
 function formatDate(ts: number): string {
@@ -69,13 +82,13 @@ function BarChart({ records }: { records: LifetimeStats['records'] }) {
             <span
               style={{
                 fontSize: '11px',
-                color: '#666',
+                color: MODE_TAG_COLORS[r.mode ?? 'NORMAL'],
                 width: '24px',
                 textAlign: 'right',
                 flexShrink: 0,
               }}
             >
-              S{r.stage}
+              {`${MODE_TAG_PREFIXES[r.mode ?? 'NORMAL']}${r.stage}`}
             </span>
           </div>
         )
@@ -94,7 +107,6 @@ export default function StatsModal({ onClose }: Props) {
   if (!stats) return null
 
   const hasPlayed = stats.totalPlays > 0
-  const bestScore = stats.records.length > 0 ? Math.max(...stats.records.map((r) => r.score)) : 0
 
   return (
     <div
@@ -146,10 +158,13 @@ export default function StatsModal({ onClose }: Props) {
               }}
             >
               <StatCard label="TOTAL PLAYS" value={String(stats.totalPlays)} />
-              <StatCard label="BEST SCORE" value={bestScore.toLocaleString()} highlight />
+              <StatCard label="BEST SCORE" value={stats.bestScore.toLocaleString()} highlight />
               <StatCard label="MAX STAGE" value={`Stage ${stats.maxStageReached}`} />
               <StatCard label="TOTAL KILLS" value={String(totalKillCount(stats.totalKills))} />
             </div>
+            <p style={{ fontSize: '11px', color: '#555', marginTop: '-12px' }}>
+              BEST SCORE・MAX STAGE は NORMAL の記録です
+            </p>
 
             <section>
               <SectionTitle>SCORE HISTORY</SectionTitle>

@@ -54,6 +54,16 @@ describe('loadStats', () => {
     expect(stats.totalKills).toEqual({ normal: 0, attack: 0, boss: 0, heal: 0 })
   })
 
+  it('bestScore がない古い形式のデータは NORMAL の記録から補う', () => {
+    store['shooter-stats'] = JSON.stringify({
+      records: [makeRecord(800, 3), makeRecord(5000, 8, { mode: 'EASY' }), makeRecord(1200, 4, { mode: 'NORMAL' })],
+      maxStageReached: 4,
+      totalPlays: 3,
+      totalKills: { normal: 30, attack: 9, boss: 3, heal: 0 },
+    })
+    expect(loadStats().bestScore).toBe(1200)
+  })
+
   it('壊れたJSONのとき空の統計を返す（エラーにしない）', () => {
     store['shooter-stats'] = '{broken json'
     const stats = loadStats()
@@ -78,6 +88,35 @@ describe('saveGameRecord', () => {
     const stats = loadStats()
     expect(stats.records[0].score).toBe(1200)
     expect(stats.records[1].score).toBe(500)
+  })
+
+  it('EXTRAの記録は maxStageReached に影響しない', () => {
+    saveGameRecord(makeRecord(1000, 5))
+    saveGameRecord(makeRecord(9000, 3, { mode: 'EXTRA' }))
+    saveGameRecord(makeRecord(500, 2, { mode: 'EXTRA' }))
+    const stats = loadStats()
+    expect(stats.maxStageReached).toBe(5)
+    expect(stats.totalPlays).toBe(3)
+    expect(stats.records[0].mode).toBe('EXTRA')
+  })
+
+  it('EASYの記録は bestScore・maxStageReached に影響しない', () => {
+    saveGameRecord(makeRecord(1000, 3, { mode: 'NORMAL' }))
+    saveGameRecord(makeRecord(5000, 8, { mode: 'EASY' }))
+    const stats = loadStats()
+    expect(stats.bestScore).toBe(1000)
+    expect(stats.maxStageReached).toBe(3)
+    expect(stats.totalPlays).toBe(2)
+  })
+
+  it('bestScore は記録が20件を超えても下がらない', () => {
+    saveGameRecord(makeRecord(9999, 5))
+    for (let i = 0; i < 25; i++) {
+      saveGameRecord(makeRecord(100, 1))
+    }
+    const stats = loadStats()
+    expect(stats.records.every((r) => r.score === 100)).toBe(true)
+    expect(stats.bestScore).toBe(9999)
   })
 
   it('maxStageReached が正しく更新される', () => {

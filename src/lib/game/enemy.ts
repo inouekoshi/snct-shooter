@@ -1,5 +1,7 @@
-import type { DifficultyParams } from './difficulty'
+import type { BossVariant, DifficultyParams } from './difficulty'
 import { createEnemyBullet, type Bullet } from './bullet'
+import { CANVAS_HEIGHT, CANVAS_CENTER_X, PLAYER_START_Y } from './constants'
+import type { Rng } from './random'
 
 export type EnemyKind = 'normal' | 'attack' | 'boss' | 'heal'
 
@@ -17,87 +19,94 @@ export interface Enemy {
   score: number
   vx: number
   movePhase: number
+  shotCount: number
   bossParams?: DifficultyParams['bossParams']
+  bossVariant?: BossVariant
 }
 
-const PLAYER_BASE_Y = 760
+const ATTACK_SPREAD_DEG = 20
+const AIMED_SPREAD_DEG = 15
+const FAN_TOTAL_DEG = 80
 
-function randomSpawnX(): number {
-  return 40 + Math.random() * 310
+const OFFSCREEN_MARGIN = 76
+
+const SPAWN_Y = -20
+
+function randomSpawnX(rng: Rng): number {
+  return 40 + rng() * 310
 }
 
-export function createNormalEnemy(diff: DifficultyParams): Enemy {
+type EnemySpec = Pick<Enemy, 'kind' | 'x' | 'radius' | 'hp' | 'speed' | 'score'> & Partial<Enemy>
+
+function createEnemy(spec: EnemySpec): Enemy {
   return {
-    kind: 'normal',
-    x: randomSpawnX(),
-    y: -20,
-    radius: 15,
-    hp: 1,
-    maxHp: 1,
-    speed: diff.normalEnemySpeed,
+    y: SPAWN_Y,
+    maxHp: spec.hp,
     fireTimer: 0,
     fireInterval: Infinity,
     bulletSpeed: 0,
-    score: 10,
     vx: 0,
     movePhase: 0,
+    shotCount: 0,
+    ...spec,
   }
 }
 
-export function createAttackEnemy(diff: DifficultyParams): Enemy {
-  const zigzag = Math.random() < 0.4
-  return {
+export function createNormalEnemy(diff: DifficultyParams, rng: Rng = Math.random): Enemy {
+  return createEnemy({
+    kind: 'normal',
+    x: randomSpawnX(rng),
+    radius: 15,
+    hp: 1,
+    speed: diff.normalEnemySpeed,
+    score: 10,
+  })
+}
+
+export function createAttackEnemy(diff: DifficultyParams, rng: Rng = Math.random): Enemy {
+  const zigzag = rng() < 0.4
+  return createEnemy({
     kind: 'attack',
-    x: randomSpawnX(),
-    y: -20,
+    x: randomSpawnX(rng),
     radius: 20,
-    hp: 30,
-    maxHp: 30,
+    hp: diff.attackEnemyHp,
     speed: diff.attackEnemySpeed,
-    fireTimer: diff.attackEnemyFireInterval * Math.random(),
+    fireTimer: diff.attackEnemyFireInterval * rng(),
     fireInterval: diff.attackEnemyFireInterval,
     bulletSpeed: diff.attackEnemyBulletSpeed,
     score: 30,
-    vx: zigzag ? (Math.random() < 0.5 ? 1 : -1) * 70 : 0,
-    movePhase: 0,
-  }
+    vx: zigzag ? (rng() < 0.5 ? 1 : -1) * 70 : 0,
+    shotCount: zigzag ? diff.attackEnemyShots.zigzag : diff.attackEnemyShots.straight,
+  })
 }
 
-export function createHealEnemy(): Enemy {
-  return {
+export function createHealEnemy(rng: Rng = Math.random): Enemy {
+  return createEnemy({
     kind: 'heal',
-    x: randomSpawnX(),
-    y: -20,
+    x: randomSpawnX(rng),
     radius: 14,
     hp: 1,
-    maxHp: 1,
     speed: 65,
-    fireTimer: 0,
-    fireInterval: Infinity,
-    bulletSpeed: 0,
     score: 0,
-    vx: 0,
-    movePhase: 0,
-  }
+  })
 }
 
-export function createBoss(stage: number, diff: DifficultyParams): Enemy {
-  return {
+export function createBoss(diff: DifficultyParams): Enemy {
+  const isFinal = diff.bossVariant === 'final'
+  return createEnemy({
     kind: 'boss',
-    x: 195,
+    x: CANVAS_CENTER_X,
     y: -60,
-    radius: 40,
+    radius: isFinal ? 48 : 40,
     hp: diff.bossHp,
-    maxHp: diff.bossHp,
     speed: diff.bossSpeed,
     fireTimer: diff.bossParams.interval1,
     fireInterval: diff.bossParams.interval1,
     bulletSpeed: diff.bossParams.bulletSpeed1,
-    score: 500,
-    vx: 0,
-    movePhase: 0,
+    score: isFinal ? 1000 : 500,
     bossParams: diff.bossParams,
-  }
+    bossVariant: diff.bossVariant,
+  })
 }
 
 export function updateEnemies(
@@ -121,21 +130,9 @@ export function updateEnemies(
       e.fireTimer -= delta
       if (e.fireTimer <= 0) {
         e.fireTimer = e.fireInterval
-        const dx = playerX - e.x
-        const dy = PLAYER_BASE_Y - e.y
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1
-        const baseAngle = Math.atan2(dy, dx)
-
-        if (e.vx === 0) {
-          const speed = e.bulletSpeed
-          bullets.push(createEnemyBullet(e.x, e.y, (dx / dist) * speed, (dy / dist) * speed))
-        } else {
-          for (const offset of [-20, 0, 20]) {
-            const angle = baseAngle + (offset * Math.PI) / 180
-            const speed = e.bulletSpeed * 0.85
-            bullets.push(createEnemyBullet(e.x, e.y, Math.cos(angle) * speed, Math.sin(angle) * speed))
-          }
-        }
+        const baseAngle = Math.atan2(PLAYER_START_Y - e.y, playerX - e.x)
+        const speed = e.vx === 0 ? e.bulletSpeed : e.bulletSpeed * 0.85
+        fireSpread(bullets, e.x, e.y, baseAngle, speed, e.shotCount, ATTACK_SPREAD_DEG, false)
       }
     } else if (e.kind === 'boss') {
       updateBoss(e, delta, playerX, bullets)
@@ -160,48 +157,58 @@ function updateBoss(boss: Enemy, delta: number, playerX: number, bullets: Bullet
     const bp = boss.bossParams!
     if (hpRatio > 0.5) {
       boss.fireTimer = bp.interval1
-      const tx = playerX - boss.x
-      const ty = PLAYER_BASE_Y - boss.y
-      const dist = Math.sqrt(tx * tx + ty * ty) || 1
-      bullets.push(createEnemyBullet(boss.x, boss.y, (tx / dist) * bp.bulletSpeed1, (ty / dist) * bp.bulletSpeed1, true))
+      const aim = Math.atan2(PLAYER_START_Y - boss.y, playerX - boss.x)
+      fireSpread(bullets, boss.x, boss.y, aim, bp.bulletSpeed1, bp.aimedShots, AIMED_SPREAD_DEG, true)
     } else if (hpRatio > 0.25) {
       boss.fireTimer = bp.interval2
-      for (const offset of [-40, -20, 0, 20, 40]) {
-        const angle = Math.PI / 2 + (offset * Math.PI) / 180
-        bullets.push(createEnemyBullet(boss.x, boss.y, Math.cos(angle) * bp.bulletSpeed2, Math.sin(angle) * bp.bulletSpeed2, true))
-      }
+      const step = bp.fanWays > 1 ? FAN_TOTAL_DEG / (bp.fanWays - 1) : 0
+      fireSpread(bullets, boss.x, boss.y, Math.PI / 2, bp.bulletSpeed2, bp.fanWays, step, true)
     } else {
       boss.fireTimer = bp.interval3
       boss.movePhase = (boss.movePhase + Math.PI / 6) % (Math.PI * 2)
-      for (let i = 0; i < 3; i++) {
-        const angle = boss.movePhase + (i * Math.PI * 2) / 3
+      for (let i = 0; i < bp.spiralArms; i++) {
+        const angle = boss.movePhase + (i * Math.PI * 2) / bp.spiralArms
         bullets.push(createEnemyBullet(boss.x, boss.y, Math.cos(angle) * bp.bulletSpeed3, Math.sin(angle) * bp.bulletSpeed3, true))
       }
     }
   }
 }
 
+function fireSpread(
+  bullets: Bullet[],
+  x: number,
+  y: number,
+  centerAngle: number,
+  speed: number,
+  count: number,
+  stepDeg: number,
+  isBoss: boolean
+): void {
+  for (let i = 0; i < count; i++) {
+    const angle = centerAngle + ((i - (count - 1) / 2) * stepDeg * Math.PI) / 180
+    bullets.push(createEnemyBullet(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, isBoss))
+  }
+}
+
 export function removeOffscreenEnemies(enemies: Enemy[]): Enemy[] {
-  return enemies.filter((e) => e.y < 920)
+  return enemies.filter((e) => e.y < CANVAS_HEIGHT + OFFSCREEN_MARGIN)
 }
 
 export function enemyColor(e: Enemy): string {
   if (e.kind === 'normal') return '#FF4444'
   if (e.kind === 'attack') return e.vx !== 0 ? '#FFAA00' : '#FF8800'
   if (e.kind === 'heal') return '#00CC88'
-  return '#AA00FF'
+  return e.bossVariant === 'final' ? '#FF2266' : '#AA00FF'
 }
 
 export function renderEnemies(ctx: CanvasRenderingContext2D, enemies: Enemy[]): void {
   for (const e of enemies) {
-    if (e.kind === 'normal') {
-      renderNormalEnemy(ctx, e)
-    } else if (e.kind === 'attack') {
-      renderAttackEnemy(ctx, e)
-    } else if (e.kind === 'boss') {
+    if (e.kind === 'boss') {
       renderBoss(ctx, e)
     } else if (e.kind === 'heal') {
       renderHealEnemy(ctx, e)
+    } else {
+      renderTriangleEnemy(ctx, e)
     }
   }
 }
@@ -216,18 +223,7 @@ function renderHealEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
   ctx.fillRect(e.x - 2, e.y - 6, 4, 12)
 }
 
-function renderNormalEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
-  const s = e.radius
-  ctx.fillStyle = enemyColor(e)
-  ctx.beginPath()
-  ctx.moveTo(e.x, e.y + s)
-  ctx.lineTo(e.x - s, e.y - s)
-  ctx.lineTo(e.x + s, e.y - s)
-  ctx.closePath()
-  ctx.fill()
-}
-
-function renderAttackEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
+function renderTriangleEnemy(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const s = e.radius
   ctx.fillStyle = enemyColor(e)
   ctx.beginPath()
@@ -242,11 +238,22 @@ function renderBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const r = e.radius
   ctx.fillStyle = enemyColor(e)
   ctx.beginPath()
-  for (let i = 0; i < 6; i++) {
-    const angle = (i * Math.PI) / 3 - Math.PI / 6
-    const px = e.x + Math.cos(angle) * r * 1.4
-    const py = e.y + Math.sin(angle) * r * 0.8
-    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
+  if (e.bossVariant === 'final') {
+    const points = 16
+    for (let i = 0; i < points; i++) {
+      const angle = (i * Math.PI * 2) / points + e.movePhase
+      const len = i % 2 === 0 ? r * 1.3 : r * 0.75
+      const px = e.x + Math.cos(angle) * len
+      const py = e.y + Math.sin(angle) * len
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
+    }
+  } else {
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI) / 3 - Math.PI / 6
+      const px = e.x + Math.cos(angle) * r * 1.4
+      const py = e.y + Math.sin(angle) * r * 0.8
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
+    }
   }
   ctx.closePath()
   ctx.fill()
@@ -257,7 +264,7 @@ function renderBoss(ctx: CanvasRenderingContext2D, e: Enemy): void {
   const barY = e.y - r - 20
   ctx.fillStyle = '#333'
   ctx.fillRect(barX, barY, barW, barH)
-  ctx.fillStyle = '#AA00FF'
+  ctx.fillStyle = enemyColor(e)
   ctx.fillRect(barX, barY, barW * (e.hp / e.maxHp), barH)
   ctx.strokeStyle = '#FFFFFF'
   ctx.lineWidth = 1

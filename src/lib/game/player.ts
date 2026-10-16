@@ -1,8 +1,11 @@
 import type { TouchBuffer } from './touch'
 import type { PowerUpKind } from './state'
+import type { DifficultyMode } from './difficulty'
+import { createPlayerBullet, createPlayerLaser, type Bullet } from './bullet'
+import { CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_CENTER_X, PLAYER_START_Y } from './constants'
 
 export const PLAYER_RADIUS = 12
-
+export const MAX_WEAPON_LEVEL = 5
 
 const PLAYER_WIDTH = 24
 const PLAYER_HEIGHT = 30
@@ -21,10 +24,10 @@ export interface Player {
   weaponLevel: number
 }
 
-export function createPlayer(): Player {
-  return {
-    x: 195,
-    y: 760,
+export function createPlayer(mode: DifficultyMode = 'NORMAL'): Player {
+  const player: Player = {
+    x: CANVAS_CENTER_X,
+    y: PLAYER_START_Y,
     lives: 3,
     invincibleTimer: 0,
     fireTimer: 0,
@@ -32,11 +35,55 @@ export function createPlayer(): Player {
     bulletSpeed: 600,
     weaponLevel: 1,
   }
+  if (mode === 'EXTRA') {
+    player.lives = 5
+    player.fireInterval = 140
+    player.bulletSpeed = 840
+    player.weaponLevel = 3
+  }
+  return player
+}
+
+const WEAPON_NAMES: Record<number, string> = {
+  1: 'シングル',
+  2: 'ツインショット',
+  3: '3-Way',
+  4: '5-Way',
+  5: '貫通レーザー',
+}
+
+export function weaponName(level: number): string {
+  return WEAPON_NAMES[level] ?? WEAPON_NAMES[MAX_WEAPON_LEVEL]
+}
+
+function spreadShots(x: number, y: number, speed: number, degrees: number[]): Bullet[] {
+  return degrees.map((deg) => {
+    const rad = (deg * Math.PI) / 180
+    return createPlayerBullet(x, y, speed * Math.sin(rad), -speed * Math.cos(rad))
+  })
+}
+
+export function firePlayerBullets(player: Player): Bullet[] {
+  const speed = player.bulletSpeed
+  const x = player.x
+  const y = player.y - 15
+  switch (player.weaponLevel) {
+    case 1:
+      return [createPlayerBullet(x, y, 0, -speed)]
+    case 2:
+      return [createPlayerBullet(x - 8, y, 0, -speed), createPlayerBullet(x + 8, y, 0, -speed)]
+    case 3:
+      return spreadShots(x, y, speed, [0, -15, 15])
+    case 4:
+      return spreadShots(x, y, speed, [0, -10, 10, -20, 20])
+    default:
+      return [createPlayerLaser(x, y, speed), ...spreadShots(x, y, speed, [-10, 10, -20, 20])]
+  }
 }
 
 export function resetPlayerPosition(player: Player): void {
-  player.x = 195
-  player.y = 760
+  player.x = CANVAS_CENTER_X
+  player.y = PLAYER_START_Y
 }
 
 export function updatePlayer(
@@ -45,8 +92,8 @@ export function updatePlayer(
   delta: number
 ): void {
   if (touch.active) {
-    const targetX = Math.max(PADDING, Math.min(390 - PADDING, touch.x))
-    const targetY = Math.max(PADDING, Math.min(844 - PADDING, touch.y))
+    const targetX = Math.max(PADDING, Math.min(CANVAS_WIDTH - PADDING, touch.x))
+    const targetY = Math.max(PADDING, Math.min(CANVAS_HEIGHT - PADDING, touch.y))
     const t = 1 - Math.exp(-FOLLOW_SPEED * delta / 1000)
     player.x += (targetX - player.x) * t
     player.y += (targetY - player.y) * t
@@ -86,7 +133,7 @@ export function applyUpgrade(player: Player, kind: PowerUpKind): void {
   } else if (kind === 'BULLET_SPEED') {
     player.bulletSpeed = Math.min(1080, player.bulletSpeed + 120)
   } else if (kind === 'WEAPON_UPGRADE') {
-    player.weaponLevel = Math.min(3, player.weaponLevel + 1)
+    player.weaponLevel = Math.min(MAX_WEAPON_LEVEL, player.weaponLevel + 1)
   }
 }
 

@@ -17,3 +17,16 @@ export type GameState =
   | { type: 'COUNTDOWN'; resumeTo: GameState; remaining: number }
   | { type: 'GAME_OVER'; score: number; stage: number }
   | { type: 'GAME_CLEAR'; score: number; stage: number }
+
+const PAUSABLE_STATE_TYPES: ReadonlyArray<GameState['type']> = [
+  'PLAYING', 'BOSS_APPEARING', 'BOSS_FIGHT', 'STAGE_CLEAR', 'POWER_UP_SELECT',
+]
+
+export function isPausable(type: GameState['type']): boolean {
+  return PAUSABLE_STATE_TYPES.includes(type)
+}
+
+export function stageOf(state: GameState): number | null {
+  if (state.type === 'PAUSED' || state.type === 'COUNTDOWN') return stageOf(state.resumeTo)
+  return 'stage' in state ? state.stage : null
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getDifficulty } from '../difficulty'
+import { getDifficulty, getStageCount, getStageClearBonus } from '../difficulty'
 
 describe('getDifficulty', () => {
   it('モード省略時はNORMALと同じ値を返す', () => {
@@ -67,5 +67,48 @@ describe('getDifficulty', () => {
       expect(easy.bossScoreThreshold).toBe(normal.bossScoreThreshold)
       expect(easy.attackEnemySpawnRatio).toBe(normal.attackEnemySpawnRatio)
     })
+  })
+})
+
+describe('EXTRAモード', () => {
+  it('全3ステージで、NORMAL・EASYは8ステージ', () => {
+    expect(getStageCount('EXTRA')).toBe(3)
+    expect(getStageCount('NORMAL')).toBe(8)
+    expect(getStageCount('EASY')).toBe(8)
+  })
+
+  it('ステージクリアボーナスはNORMALの続き（ステージ9〜11相当）', () => {
+    expect(getStageClearBonus(1, 'NORMAL')).toBe(100)
+    expect(getStageClearBonus(1, 'EXTRA')).toBe(900)
+    expect(getStageClearBonus(3, 'EXTRA')).toBe(1100)
+  })
+
+  it('NORMALの最終ステージより敵が速く・硬く・弾数が多い', () => {
+    const normal = getDifficulty(8, 'NORMAL')
+    const extra = getDifficulty(1, 'EXTRA')
+    expect(extra.normalEnemySpeed).toBeGreaterThan(normal.normalEnemySpeed)
+    expect(extra.attackEnemyHp).toBeGreaterThan(normal.attackEnemyHp)
+    expect(extra.attackEnemyShots.straight).toBeGreaterThan(normal.attackEnemyShots.straight)
+    expect(extra.attackEnemyShots.zigzag).toBeGreaterThan(normal.attackEnemyShots.zigzag)
+    expect(extra.bossHp).toBeGreaterThan(normal.bossHp)
+    expect(extra.bossParams.fanWays).toBeGreaterThan(normal.bossParams.fanWays)
+    expect(extra.bossParams.spiralArms).toBeGreaterThan(normal.bossParams.spiralArms)
+  })
+
+  it('ステージが進むほど難しくなる', () => {
+    for (let stage = 1; stage < 3; stage++) {
+      const cur = getDifficulty(stage, 'EXTRA')
+      const next = getDifficulty(stage + 1, 'EXTRA')
+      expect(next.normalEnemySpeed).toBeGreaterThan(cur.normalEnemySpeed)
+      expect(next.bossHp).toBeGreaterThan(cur.bossHp)
+      expect(next.bossScoreThreshold).toBeGreaterThan(cur.bossScoreThreshold)
+    }
+  })
+
+  it('最終ステージだけ専用ボス', () => {
+    expect(getDifficulty(1, 'EXTRA').bossVariant).toBe('normal')
+    expect(getDifficulty(2, 'EXTRA').bossVariant).toBe('normal')
+    expect(getDifficulty(3, 'EXTRA').bossVariant).toBe('final')
+    expect(getDifficulty(8, 'NORMAL').bossVariant).toBe('normal')
   })
 })

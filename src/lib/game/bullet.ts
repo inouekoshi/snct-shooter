@@ -1,3 +1,5 @@
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from './constants'
+
 export interface Bullet {
   x: number
   y: number
@@ -7,7 +9,14 @@ export interface Bullet {
   damage: number
   isEnemy: boolean
   isBoss: boolean
+  pierce: boolean
+  hitTargets: Set<object>
 }
+
+export const LASER_DAMAGE = 15
+const OFFSCREEN_MARGIN = 20
+const LASER_LENGTH = 28
+const LASER_WIDTH = 4
 
 export function createPlayerBullet(x: number, y: number, vx: number, vy: number): Bullet {
   return {
@@ -19,6 +28,23 @@ export function createPlayerBullet(x: number, y: number, vx: number, vy: number)
     damage: 10,
     isEnemy: false,
     isBoss: false,
+    pierce: false,
+    hitTargets: new Set(),
+  }
+}
+
+export function createPlayerLaser(x: number, y: number, speed: number): Bullet {
+  return {
+    x,
+    y,
+    vx: 0,
+    vy: -speed,
+    radius: 6,
+    damage: LASER_DAMAGE,
+    isEnemy: false,
+    isBoss: false,
+    pierce: true,
+    hitTargets: new Set(),
   }
 }
 
@@ -38,6 +64,8 @@ export function createEnemyBullet(
     damage: 1,
     isEnemy: true,
     isBoss,
+    pierce: false,
+    hitTargets: new Set(),
   }
 }
 
@@ -50,11 +78,19 @@ export function updateBullets(bullets: Bullet[], delta: number): void {
 }
 
 export function removeOffscreenBullets(bullets: Bullet[]): Bullet[] {
-  return bullets.filter((b) => b.y > -20 && b.y < 864 && b.x > -20 && b.x < 410)
+  return bullets.filter((b) =>
+    b.y > -OFFSCREEN_MARGIN && b.y < CANVAS_HEIGHT + OFFSCREEN_MARGIN &&
+    b.x > -OFFSCREEN_MARGIN && b.x < CANVAS_WIDTH + OFFSCREEN_MARGIN
+  )
 }
 
 export function renderBullets(ctx: CanvasRenderingContext2D, bullets: Bullet[]): void {
   for (const b of bullets) {
+    if (b.pierce) {
+      ctx.fillStyle = '#00FFFF'
+      ctx.fillRect(b.x - LASER_WIDTH / 2, b.y - LASER_LENGTH / 2, LASER_WIDTH, LASER_LENGTH)
+      continue
+    }
     if (b.isEnemy) {
       ctx.fillStyle = b.isBoss ? '#FF0000' : '#FF4444'
     } else {
