@@ -186,7 +186,7 @@ POST のエラー応答（クライアントは `src/lib/leaderboard.ts` の `su
 `src/app/api/scores/route.ts` でリクエストを以下の観点で検証する。
 
 - **名前**: 正規表現 `/^[\p{L}\p{N}\s\-_.]{1,10}$/u` に一致するUnicode文字・数字・一部記号のみ。判定は `src/lib/leaderboard.ts` の `isValidPlayerName` をクライアント（入力中の案内）とサーバーで共有する
-- **投稿回数の制限**: 入力チェックを通った投稿だけを、送信元 IP ごとに1分間20件までに制限し、超えたら `{ error: 'too many requests' }` を429で返す（`src/lib/rateLimit.ts`、`firestore.ts` の `consumeSubmissionQuota`）。高専祭の会場では多くの来場者が同じ Wi-Fi（同じ IP）から投稿するため、正当な投稿を弾かないよう上限はゆるくし、スクリプトによる大量投稿だけを止める。IP はハッシュ化して保存し、生の IP は残さない。回数は Firestore のトランザクションで数えるので、投稿ごとに読み書きが1回ずつ増える。IP が分からない場合（ローカル開発など）は制限しない
+- **投稿回数の制限**: 入力チェックを通った投稿だけを、クライアントID（`src/lib/clientId.ts`、未指定時は送信元 IP）ごとに1分間20件までに制限し、超えたら `{ error: 'too many requests' }` を429で返す（`src/lib/rateLimit.ts`、`firestore.ts` の `consumeSubmissionQuota`）。高専祭の会場では多くの来場者が同じ Wi-Fi（同じ IP）からアクセスするため、ブラウザごとにユニークなクライアントUUIDをキーにして制限することで、同一IP下の複数人が制限枠を食い合ったりFirestoreの書き込み競合を起こしたりするのを防ぐ。キーはハッシュ化して保存し、生のクライアントIDやIPは残さない。回数は Firestore のトランザクションで数えるので、投稿ごとに読み書きが1回ずつ増える。キーが分からない場合（ローカル開発など）は制限しない
 - **NG ワード**: `src/lib/ngWords.ts` の `containsNgWord` で不適切な名前を弾く（サーバーのみ）。環境変数 `NG_WORDS` で語を追加できる。詳細は [spec.md §2.11](spec.md#211-オンラインリーダーボード)
 - **スコア**: 0以上9,999,999以下の整数
 - **モード**: `normal` / `extra`（省略時は `normal`）以外は400エラー

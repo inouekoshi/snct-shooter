@@ -64,7 +64,13 @@ describe('submitLeaderboardScore', () => {
   it('成功時は順位とIDを返す', async () => {
     const fn = mockFetch(200, { ok: true, rank: 4, id: 'doc1' })
     await expect(submit()).resolves.toEqual({ ok: true, rank: 4, id: 'doc1' })
-    expect(JSON.parse(fn.mock.calls[0][1].body)).toEqual({ name: 'a', score: 100, stage: 1, mode: 'normal' })
+    expect(JSON.parse(fn.mock.calls[0][1].body)).toEqual({
+      name: 'a',
+      score: 100,
+      stage: 1,
+      mode: 'normal',
+      clientId: expect.any(String),
+    })
   })
 
   it('名前が不正なら invalid_name', async () => {

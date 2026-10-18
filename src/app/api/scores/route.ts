@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getTopScores, addScore, consumeSubmissionQuota } from '@/lib/firestore'
 import { SCORE_LIMITS, parseBoard, maxStageOf, isValidPlayerName } from '@/lib/leaderboard'
 import { containsNgWord, parseNgWords } from '@/lib/ngWords'
-import { clientIpOf, hashClientIp, parseRateLimit } from '@/lib/rateLimit'
+import { clientIpOf, rateLimitKeyOf, parseRateLimit } from '@/lib/rateLimit'
+import { isValidClientId } from '@/lib/clientId'
 
 const LEADERBOARD_CACHE_CONTROL = 'public, s-maxage=10, stale-while-revalidate=50'
 
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = await req.json()
-    const { name, score, stage, mode } = body
+    const { name, score, stage, mode, clientId } = body
 
     const board = parseBoard(mode)
     if (!board) {
@@ -48,8 +49,10 @@ export async function POST(req: NextRequest) {
     }
 
     const limit = parseRateLimit(process.env.SCORES_RATE_LIMIT_PER_MINUTE)
+    const validClientId = isValidClientId(clientId) ? clientId : null
     const clientIp = clientIpOf(req.headers)
-    if (limit > 0 && clientIp && !(await consumeSubmissionQuota(hashClientIp(clientIp), limit))) {
+    const key = rateLimitKeyOf(validClientId, clientIp)
+    if (limit > 0 && key && !(await consumeSubmissionQuota(key, limit))) {
       return NextResponse.json({ error: 'too many requests' }, { status: 429 })
     }
 

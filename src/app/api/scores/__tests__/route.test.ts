@@ -179,6 +179,24 @@ describe('POST /api/scores', () => {
       vi.unstubAllEnvs()
     })
 
+    it('clientId があればクライアントID単位のキーで制限を確認する', async () => {
+      const res = await post(
+        { ...valid, clientId: 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d' },
+        { 'x-forwarded-for': '203.0.113.5' }
+      )
+      expect(res.status).toBe(200)
+      expect(consumeSubmissionQuota).toHaveBeenCalledWith(expect.stringMatching(/^[0-9a-f]{64}$/), 20)
+    })
+
+    it('不正な clientId は無視して IP キーにフォールバックする', async () => {
+      const res = await post(
+        { ...valid, clientId: 'invalid-id' },
+        { 'x-forwarded-for': '203.0.113.5' }
+      )
+      expect(res.status).toBe(200)
+      expect(consumeSubmissionQuota).toHaveBeenCalledWith(expect.stringMatching(/^[0-9a-f]{64}$/), 20)
+    })
+
     it('不正な投稿は回数に数えない', async () => {
       await post({ name: '', score: 100, stage: 1 }, { 'x-forwarded-for': '203.0.113.5' })
       expect(consumeSubmissionQuota).not.toHaveBeenCalled()

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  consumeRateLimit, parseRateLimit, clientIpOf, hashClientIp, RATE_LIMIT_WINDOW_MS, DEFAULT_SUBMISSIONS_PER_MINUTE,
+  consumeRateLimit, parseRateLimit, clientIpOf, hashClientIp, rateLimitKeyOf, RATE_LIMIT_WINDOW_MS, DEFAULT_SUBMISSIONS_PER_MINUTE,
 } from '../rateLimit'
 
 describe('consumeRateLimit', () => {
@@ -62,5 +62,26 @@ describe('hashClientIp', () => {
     expect(hashed).not.toContain('203')
     expect(hashClientIp('203.0.113.5')).toBe(hashed)
     expect(hashClientIp('203.0.113.6')).not.toBe(hashed)
+  })
+})
+
+describe('rateLimitKeyOf', () => {
+  it('clientId があればそれを優先してハッシュ化する', () => {
+    const key = rateLimitKeyOf('36a5faee-9c16-466d-96e0-833446b5a37f', '203.0.113.5')
+    expect(key).toMatch(/^[0-9a-f]{64}$/)
+    expect(rateLimitKeyOf('36a5faee-9c16-466d-96e0-833446b5a37f', '192.168.1.1')).toBe(key)
+    expect(rateLimitKeyOf('other-client-id', '203.0.113.5')).not.toBe(key)
+  })
+
+  it('clientId がなく IP があれば IP をハッシュ化する', () => {
+    const key = rateLimitKeyOf(null, '203.0.113.5')
+    expect(key).toMatch(/^[0-9a-f]{64}$/)
+    expect(rateLimitKeyOf(undefined, '203.0.113.5')).toBe(key)
+    expect(rateLimitKeyOf(null, '192.168.1.1')).not.toBe(key)
+  })
+
+  it('どちらもなければ null', () => {
+    expect(rateLimitKeyOf(null, null)).toBeNull()
+    expect(rateLimitKeyOf(undefined, null)).toBeNull()
   })
 })

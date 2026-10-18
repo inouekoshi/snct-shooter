@@ -105,7 +105,7 @@ type GameState =
 ### ランキング API のチート対策
 - 名前: 1〜10文字（文字・数字・空白・`-_.`）。判定は `isValidPlayerName` をクライアントとサーバーで共有
 - 名前の NG ワード（`ngWords.ts`）は 400（`inappropriate name`）
-- 投稿は IP ごとに1分20件まで（`rateLimit.ts`）。超えたら 429（`too many requests`）
+- 投稿はクライアントID（未指定時はIP）ごとに1分20件まで（`rateLimit.ts`・`clientId.ts`）。超えたら 429（`too many requests`）
 - ステージ別スコア上限（`src/lib/leaderboard.ts` の `SCORE_LIMITS`、NORMAL / EXTRA 別）を超える投稿は 400
 - ゲームバランスを変えたら上限値も見直すこと
 
