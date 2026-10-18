@@ -5,7 +5,7 @@ describe('createGuardGauge', () => {
   it('空の状態で始まり、満タンに必要な量はモードで変わる', () => {
     expect(createGuardGauge('EASY')).toEqual({ value: 0, max: 20 })
     expect(createGuardGauge('NORMAL')).toEqual({ value: 0, max: 30 })
-    expect(createGuardGauge('EXTRA')).toEqual({ value: 0, max: 60 })
+    expect(createGuardGauge('EXTRA')).toEqual({ value: 0, max: 45 })
   })
 })
 

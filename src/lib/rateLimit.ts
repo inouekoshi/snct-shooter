@@ -37,3 +37,17 @@ export function clientIpOf(headers: Headers): string | null {
 export function hashClientIp(ip: string): string {
   return createHash('sha256').update(`snct-shooter:${ip}`).digest('hex')
 }
+
+export function hashRateLimitKey(key: string): string {
+  return createHash('sha256').update(`snct-shooter:${key}`).digest('hex')
+}
+
+export function rateLimitKeyOf(clientId: string | null | undefined, clientIp: string | null): string | null {
+  if (clientId) {
+    return hashRateLimitKey(`client:${clientId}`)
+  }
+  if (clientIp) {
+    return hashRateLimitKey(`ip:${clientIp}`)
+  }
+  return null
+}

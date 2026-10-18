@@ -65,9 +65,9 @@ describe('POST /api/scores', () => {
 
   describe('EXTRAランキング', () => {
     it('mode=extra ならEXTRA用に保存する', async () => {
-      const res = await post({ name: 'a', score: 5000, stage: 1, mode: 'extra' })
+      const res = await post({ name: 'a', score: 4000, stage: 1, mode: 'extra' })
       expect(res.status).toBe(200)
-      expect(addScore).toHaveBeenCalledWith({ name: 'a', score: 5000, stage: 1 }, 'extra')
+      expect(addScore).toHaveBeenCalledWith({ name: 'a', score: 4000, stage: 1 }, 'extra')
     })
 
     it('ステージは1〜3のみ', async () => {
@@ -75,9 +75,9 @@ describe('POST /api/scores', () => {
     })
 
     it('EXTRA用のスコア上限で判定する', async () => {
-      expect((await post({ name: 'a', score: 19000, stage: 3, mode: 'extra' })).status).toBe(200)
-      expect((await post({ name: 'a', score: 19001, stage: 3, mode: 'extra' })).status).toBe(400)
-      expect((await post({ name: 'a', score: 5201, stage: 1, mode: 'extra' })).status).toBe(400)
+      expect((await post({ name: 'a', score: 16800, stage: 3, mode: 'extra' })).status).toBe(200)
+      expect((await post({ name: 'a', score: 16801, stage: 3, mode: 'extra' })).status).toBe(400)
+      expect((await post({ name: 'a', score: 4601, stage: 1, mode: 'extra' })).status).toBe(400)
     })
 
     it('不明なmodeは400', async () => {
@@ -177,6 +177,24 @@ describe('POST /api/scores', () => {
       expect((await post(valid, { 'x-forwarded-for': '203.0.113.5' })).status).toBe(200)
       expect(consumeSubmissionQuota).not.toHaveBeenCalled()
       vi.unstubAllEnvs()
+    })
+
+    it('clientId があればクライアントID単位のキーで制限を確認する', async () => {
+      const res = await post(
+        { ...valid, clientId: 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d' },
+        { 'x-forwarded-for': '203.0.113.5' }
+      )
+      expect(res.status).toBe(200)
+      expect(consumeSubmissionQuota).toHaveBeenCalledWith(expect.stringMatching(/^[0-9a-f]{64}$/), 20)
+    })
+
+    it('不正な clientId は無視して IP キーにフォールバックする', async () => {
+      const res = await post(
+        { ...valid, clientId: 'invalid-id' },
+        { 'x-forwarded-for': '203.0.113.5' }
+      )
+      expect(res.status).toBe(200)
+      expect(consumeSubmissionQuota).toHaveBeenCalledWith(expect.stringMatching(/^[0-9a-f]{64}$/), 20)
     })
 
     it('不正な投稿は回数に数えない', async () => {

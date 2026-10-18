@@ -138,7 +138,7 @@ describe('EXTRAモードの敵', () => {
   const extra = getDifficulty(1, 'EXTRA')
   const finalDiff = getDifficulty(3, 'EXTRA')
 
-  it('攻撃敵は直進型3発・ジグザグ型5発を撃つ', () => {
+  it('攻撃敵は直進型3発・ジグザグ型4発を撃つ', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5)
     const straight = createAttackEnemy(extra)
     straight.fireTimer = 0
@@ -151,11 +151,11 @@ describe('EXTRAモードの敵', () => {
     zigzag.fireTimer = 0
     const b2: Bullet[] = []
     updateEnemies([zigzag], 16, 195, b2)
-    expect(b2).toHaveLength(5)
+    expect(b2).toHaveLength(4)
   })
 
   it('攻撃敵のHPが難易度に従う', () => {
-    expect(createAttackEnemy(extra).hp).toBe(50)
+    expect(createAttackEnemy(extra).hp).toBe(40)
   })
 
   it('最終ボスは専用の見た目・スコアで、弾幕が多い', () => {
@@ -173,8 +173,8 @@ describe('EXTRAモードの敵', () => {
       return bullets.length
     }
     expect(fire(1)).toBe(3)
-    expect(fire(0.5)).toBe(9)
-    expect(fire(0.25)).toBe(6)
+    expect(fire(0.5)).toBe(7)
+    expect(fire(0.25)).toBe(5)
   })
 
   it('扇形弾幕は左右対称で真下が中心', () => {

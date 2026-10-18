@@ -1,3 +1,5 @@
+import { loadClientId } from './clientId'
+
 export type LeaderboardBoard = 'normal' | 'extra'
 
 export interface LeaderboardEntry {
@@ -14,7 +16,7 @@ export const SCORE_LIMITS: Record<LeaderboardBoard, Record<number, number>> = {
     5: 14500, 6: 18800, 7: 23500, 8: 28600,
   },
   extra: {
-    1: 5200, 2: 11300, 3: 19000,
+    1: 4600, 2: 9900, 3: 16800,
   },
 }
 
@@ -53,6 +55,7 @@ export async function fetchLeaderboard(board: LeaderboardBoard, submittedId?: st
   return data.entries ?? []
 }
 
+
 export type SubmitScoreResult =
   | { ok: true; rank: number; id: string }
   | { ok: false; reason: 'invalid_name' | 'inappropriate_name' | 'disabled' | 'rate_limited' | 'failed' }
@@ -62,10 +65,11 @@ export async function submitLeaderboardScore(
   board: LeaderboardBoard
 ): Promise<SubmitScoreResult> {
   try {
+    const clientId = loadClientId()
     const res = await fetch('/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...entry, mode: board }),
+      body: JSON.stringify({ ...entry, mode: board, clientId }),
     })
     const data = await res.json()
     if (res.ok && data.ok) return { ok: true, rank: data.rank, id: data.id }
