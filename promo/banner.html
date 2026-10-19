@@ -30,9 +30,10 @@
   }
   .catch {
     font-family: 'M PLUS 1p', sans-serif; font-weight: 900;
-    color: #fff; letter-spacing: 0.03em;
+    color: #fff; letter-spacing: 0.03em; line-height: 1.4;
     text-shadow: calc(var(--u) * 0.45) calc(var(--u) * 0.45) 0 #000;
   }
+  .catch .line { display: block; white-space: nowrap; }
   .catch .bang { margin-left: 0.08em; letter-spacing: -0.04em; }
   .catch em {
     font-style: normal; color: #FFE600;
@@ -66,7 +67,7 @@
   <div class="copy" id="copy">
     <div class="badge" id="badge">懐かしのスペースシューティング！</div>
     <div class="title" id="title">SNCT<br>SHOOTER</div>
-    <div class="catch" id="catch">ランキング<em>1位</em>を目指せ<span class="bang">!!</span></div>
+    <div class="catch" id="catch"><span class="line" id="line1">最後まで生き残って、</span><span class="line" id="line2">ランキング<em>1位</em>を目指せ<span class="bang">!</span></span></div>
   </div>
   <div class="stamp" id="stamp"><span id="stamp1">高専祭</span><span id="stamp2">GAME</span></div>
 </div>
@@ -363,6 +364,13 @@ function placePhone() {
 }
 
 document.fonts.ready.then(() => {
+  const shooter = title.lastChild
+  const range = document.createRange()
+  range.setStart(shooter, 1)
+  range.setEnd(shooter, 2)
+  const hOffset = range.getBoundingClientRect().left - copy.getBoundingClientRect().left
+  document.getElementById('line1').style.marginLeft = hOffset + 'px'
+  document.getElementById('line2').style.marginLeft = hOffset + L.catch * u * 2.5 + 'px'
   copy.style.top = (H - copy.offsetHeight) / 2 + 'px'
   drawBackground()
   placePhone()
