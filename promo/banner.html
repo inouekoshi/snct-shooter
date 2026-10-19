@@ -83,28 +83,14 @@
 </div>
 <script>
 const params = new URLSearchParams(location.search)
-const W = Number(params.get('w') || 2400)
-const H = Number(params.get('h') || 600)
-const layout = params.get('layout') || 'wide'
+const W = Number(params.get('w') || 1920)
+const H = Number(params.get('h') || 1080)
+const layout = params.get('layout') || 'card'
 
 const LAYOUTS = {
-  wide: {
-    u: H / 100,
-    title: 21, titleOneLine: true, catch: 5.6, chip: 4.2, badge: 4.2,
-    copyLeft: W * 0.05, copyTop: H * 0.18,
-    phoneH: H * 0.92, phoneX: W * 0.66, phoneY: H * 0.06, phoneRot: 8,
-    stamp: H * 0.3, stampX: W * 0.85, stampY: H * 0.08,
-  },
-  mid: {
-    u: H / 100,
-    title: 17.5, titleOneLine: true, catch: 5.4, chip: 4.2, badge: 4.2,
-    copyLeft: W * 0.05, copyTop: H * 0.18,
-    phoneH: H * 0.92, phoneX: W * 0.665, phoneY: H * 0.06, phoneRot: 8,
-    stamp: H * 0.28, stampX: W * 0.84, stampY: H * 0.08,
-  },
   card: {
     u: H / 100,
-    title: 15.5, titleOneLine: false, catch: 4.4, chip: 3.3, badge: 3.6,
+    title: 15.5, catch: 4.4, chip: 3.3, badge: 3.6,
     copyLeft: W * 0.06, copyTop: H * 0.12,
     phoneH: H * 0.9, phoneX: W * 0.64, phoneY: H * 0.07, phoneRot: 7,
     stamp: H * 0.22, stampX: W * 0.835, stampY: H * 0.64,
@@ -131,7 +117,6 @@ badge.style.padding = `${u * 0.9}px ${u * 2.2}px`
 badge.style.marginBottom = u * 3.2 + 'px'
 const title = document.getElementById('title')
 title.style.fontSize = L.title * u + 'px'
-if (L.titleOneLine) title.innerHTML = 'SNCT SHOOTER'
 const catchEl = document.getElementById('catch')
 catchEl.style.fontSize = L.catch * u + 'px'
 catchEl.style.marginTop = u * 4.5 + 'px'

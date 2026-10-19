@@ -10,6 +10,4 @@ render() {
     --screenshot="$PWD/$1" "$PAGE?w=$2&h=$3&layout=$4" 2>/dev/null
 }
 
-render banner-4x1.png 2400 600 wide
-render banner-3x1.png 1800 600 mid
 render card-16x9.png 1920 1080 card
