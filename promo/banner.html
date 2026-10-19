@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DotGothic16&family=M+PLUS+1p:wght@800;900&family=Orbitron:wght@900&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+1p:wght@800;900&family=Orbitron:wght@900&display=block" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { background: #000; overflow: hidden; }
@@ -30,21 +30,15 @@
   }
   .catch {
     font-family: 'M PLUS 1p', sans-serif; font-weight: 900;
-    color: #fff; letter-spacing: 0.06em;
+    color: #fff; letter-spacing: 0.03em;
     text-shadow: calc(var(--u) * 0.45) calc(var(--u) * 0.45) 0 #000;
   }
-  .chips { display: flex; flex-wrap: wrap; }
-  .chip {
-    font-family: 'DotGothic16', sans-serif;
-    color: #fff; background: rgba(7, 4, 26, 0.85);
-    border: var(--line) solid currentColor;
-    border-radius: 999px;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
+  .catch .bang { margin-left: 0.08em; letter-spacing: -0.04em; }
+  .catch em {
+    font-style: normal; color: #FFE600;
+    font-size: 1.2em;
+    margin: 0 0.06em;
   }
-  .chip.y { color: #FFE600; }
-  .chip.c { color: #00E5FF; }
-  .chip.p { color: #FF6B9A; }
   .phone {
     position: absolute; z-index: 1;
     background: #111; border-radius: calc(var(--pw) * 0.13);
@@ -70,14 +64,9 @@
   <canvas id="bg"></canvas>
   <div class="phone" id="phone"><canvas id="screen"></canvas></div>
   <div class="copy" id="copy">
-    <div class="badge" id="badge">スマホで遊べる！</div>
+    <div class="badge" id="badge">懐かしのスペースシューティング！</div>
     <div class="title" id="title">SNCT<br>SHOOTER</div>
-    <div class="catch" id="catch">指1本で遊べる縦スクロールシューティング</div>
-    <div class="chips" id="chips">
-      <span class="chip y">全8ステージ</span>
-      <span class="chip c">オンラインランキング</span>
-      <span class="chip p">無料・申込不要</span>
-    </div>
+    <div class="catch" id="catch">ランキング<em>1位</em>を目指せ<span class="bang">!!</span></div>
   </div>
   <div class="stamp" id="stamp"><span id="stamp1">高専祭</span><span id="stamp2">GAME</span></div>
 </div>
@@ -90,7 +79,7 @@ const layout = params.get('layout') || 'card'
 const LAYOUTS = {
   card: {
     u: H / 100,
-    title: 15.5, catch: 4.4, chip: 3.3, badge: 3.6,
+    title: 16.5, catch: 4.6, badge: 3.8,
     copyLeft: W * 0.06, copyTop: H * 0.12,
     phoneH: H * 0.9, phoneX: W * 0.64, phoneY: H * 0.07, phoneRot: 7,
     stamp: H * 0.22, stampX: W * 0.835, stampY: H * 0.64,
@@ -119,14 +108,7 @@ const title = document.getElementById('title')
 title.style.fontSize = L.title * u + 'px'
 const catchEl = document.getElementById('catch')
 catchEl.style.fontSize = L.catch * u + 'px'
-catchEl.style.marginTop = u * 4.5 + 'px'
-const chips = document.getElementById('chips')
-chips.style.gap = u * 1.6 + 'px'
-chips.style.marginTop = u * 3.6 + 'px'
-for (const c of chips.children) {
-  c.style.fontSize = L.chip * u + 'px'
-  c.style.padding = `${u * 0.8}px ${u * 2.4}px`
-}
+catchEl.style.marginTop = u * 4 + 'px'
 
 const stamp = document.getElementById('stamp')
 stamp.style.width = stamp.style.height = L.stamp + 'px'
@@ -262,7 +244,6 @@ function drawBackground() {
   const deco = [
     ['tri', 0.60, 0.20, 3.4, '#FF4444'],
     ['tri', 0.565, 0.78, 2.6, '#FF8800'],
-    ['tri', 0.97, 0.22, 2.8, '#FF4444'],
     ['tri', 0.955, 0.86, 3.6, '#FFAA00'],
     ['heal', 0.62, 0.55, 2.2],
     ['dot', 0.585, 0.40, 0.9, '#FF0000'],
@@ -382,6 +363,7 @@ function placePhone() {
 }
 
 document.fonts.ready.then(() => {
+  copy.style.top = (H - copy.offsetHeight) / 2 + 'px'
   drawBackground()
   placePhone()
   document.body.dataset.ready = '1'
