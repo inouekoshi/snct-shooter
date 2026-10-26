@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { loadStats, totalKillCount, type LifetimeStats } from '@/lib/game/stats'
 import type { DifficultyMode } from '@/lib/game/difficulty'
+import SponsorCredit from './SponsorCredit'
 
 interface Props {
   onClose: () => void
@@ -183,6 +184,7 @@ export default function StatsModal({ onClose }: Props) {
           </>
         )}
       </div>
+      <SponsorCredit style={{ marginTop: 'auto', flexShrink: 0, padding: '8px 0 16px' }} />
     </div>
   )
 }

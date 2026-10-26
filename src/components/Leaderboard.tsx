@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { fetchLeaderboard, rankEntries, type LeaderboardBoard, type LeaderboardEntry } from '@/lib/leaderboard'
+import SponsorCredit from './SponsorCredit'
 
 interface Props {
   highlightId?: string
@@ -160,6 +161,7 @@ export default function Leaderboard({ highlightId, initialBoard = 'normal', onCl
           )
         })}
       </div>
+      <SponsorCredit style={{ flexShrink: 0, padding: '8px 0 16px' }} />
     </div>
   )
 }

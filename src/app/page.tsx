@@ -7,6 +7,7 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/game/constants'
 import RotatePrompt from '@/components/RotatePrompt'
 import Leaderboard from '@/components/Leaderboard'
 import StatsModal from '@/components/StatsModal'
+import SponsorCredit from '@/components/SponsorCredit'
 import { useViewportScale } from '@/components/useViewportScale'
 
 const MENU_BUTTON: CSSProperties = {
@@ -159,7 +160,7 @@ export default function StartPage() {
         <p
           style={{
             position: 'absolute',
-            bottom: '24px',
+            bottom: '44px',
             fontSize: '11px',
             color: '#444',
             textAlign: 'center',
@@ -168,6 +169,7 @@ export default function StartPage() {
         >
           iPhoneは「共有」→「ホーム画面に追加」でオフラインでも遊べます
         </p>
+        <SponsorCredit style={{ position: 'absolute', bottom: '16px', zIndex: 1 }} />
 
         {showRanking && (
           <Leaderboard onClose={() => setShowRanking(false)} />
