@@ -157,10 +157,12 @@ export default function StartPage() {
           </button>
         </div>
 
+        <SponsorCredit style={{ position: 'relative', zIndex: 1 }} />
+
         <p
           style={{
             position: 'absolute',
-            bottom: '44px',
+            bottom: '24px',
             fontSize: '11px',
             color: '#444',
             textAlign: 'center',
@@ -169,7 +171,6 @@ export default function StartPage() {
         >
           iPhoneは「共有」→「ホーム画面に追加」でオフラインでも遊べます
         </p>
-        <SponsorCredit style={{ position: 'absolute', bottom: '16px', zIndex: 1 }} />
 
         {showRanking && (
           <Leaderboard onClose={() => setShowRanking(false)} />
