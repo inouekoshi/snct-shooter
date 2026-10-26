@@ -3,7 +3,7 @@
 import type { CSSProperties } from 'react'
 import Image from 'next/image'
 
-const LOGO_HEIGHT = 16
+const LOGO_HEIGHT = 18
 const LOGO_WIDTH = Math.round(LOGO_HEIGHT * 1354 / 188)
 
 interface Props {
@@ -19,7 +19,7 @@ export default function SponsorCredit({ style }: Props) {
         justifyContent: 'center',
         gap: '8px',
         fontFamily: 'monospace',
-        fontSize: '12px',
+        fontSize: '13px',
         color: '#666',
         pointerEvents: 'none',
         ...style,

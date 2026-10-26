@@ -157,7 +157,7 @@ export default function StartPage() {
           </button>
         </div>
 
-        <SponsorCredit style={{ position: 'relative', zIndex: 1 }} />
+        <SponsorCredit style={{ position: 'relative', top: '5px', zIndex: 1 }} />
 
         <p
           style={{
