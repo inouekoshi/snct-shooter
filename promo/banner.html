@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+1p:wght@800;900&family=Orbitron:wght@900&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #000; overflow: hidden; }
+  #frame { position: relative; overflow: hidden; background: #07041a; }
+  #bg { position: absolute; inset: 0; }
+  .copy { position: absolute; z-index: 2; color: #fff; }
+  .badge {
+    display: inline-block;
+    font-family: 'M PLUS 1p', sans-serif; font-weight: 900;
+    background: #FF2266; color: #fff;
+    border: var(--line) solid #000;
+    box-shadow: var(--shadow) var(--shadow) 0 #000;
+    transform: rotate(-3deg);
+    letter-spacing: 0.06em;
+  }
+  .title {
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    line-height: 0.92; letter-spacing: 0.02em;
+    color: #FFE600;
+    -webkit-text-stroke: var(--stroke) #000;
+    paint-order: stroke fill;
+    text-shadow: var(--tshadow) var(--tshadow) 0 #FF2266, calc(var(--tshadow) * 1.9) calc(var(--tshadow) * 1.9) 0 #00E5FF;
+  }
+  .catch {
+    font-family: 'M PLUS 1p', sans-serif; font-weight: 900;
+    color: #fff; letter-spacing: 0.03em; line-height: 1.4;
+    text-shadow: calc(var(--u) * 0.45) calc(var(--u) * 0.45) 0 #000;
+  }
+  .catch .line { display: block; white-space: nowrap; }
+  .catch .bang { margin-left: 0.08em; letter-spacing: -0.04em; }
+  .catch em {
+    font-style: normal; color: #FFE600;
+    font-size: 1.2em;
+    margin: 0 0.06em;
+  }
+  .phone {
+    position: absolute; z-index: 1;
+    background: #111; border-radius: calc(var(--pw) * 0.13);
+    padding: calc(var(--pw) * 0.035);
+    border: calc(var(--pw) * 0.012) solid #3a3a48;
+    box-shadow: calc(var(--pw) * 0.05) calc(var(--pw) * 0.05) 0 #000, 0 0 calc(var(--pw) * 0.3) rgba(170, 0, 255, 0.45);
+  }
+  .phone canvas { display: block; border-radius: calc(var(--pw) * 0.09); }
+  .stamp {
+    position: absolute; z-index: 3;
+    border-radius: 50%;
+    background: #FFE600; color: #000;
+    border: var(--line) solid #000;
+    box-shadow: var(--shadow) var(--shadow) 0 #000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: 'Dela Gothic One', sans-serif; line-height: 1.15; text-align: center;
+    transform: rotate(10deg);
+  }
+</style>
+</head>
+<body>
+<div id="frame">
+  <canvas id="bg"></canvas>
+  <div class="phone" id="phone"><canvas id="screen"></canvas></div>
+  <div class="copy" id="copy">
+    <div class="badge" id="badge">懐かしのスペースシューティング！</div>
+    <div class="title" id="title">SNCT<br>SHOOTER</div>
+    <div class="catch" id="catch"><span class="line" id="line1">最後まで生き残って、</span><span class="line" id="line2">ランキング<em>1位</em>を目指せ<span class="bang">!</span></span></div>
+  </div>
+  <div class="stamp" id="stamp"><span id="stamp1">高専祭</span><span id="stamp2">GAME</span></div>
+</div>
+<script>
+const params = new URLSearchParams(location.search)
+const W = Number(params.get('w') || 1920)
+const H = Number(params.get('h') || 1080)
+const layout = params.get('layout') || 'card'
+
+const LAYOUTS = {
+  card: {
+    u: H / 100,
+    title: 16.5, catch: 4.6, badge: 3.8,
+    copyLeft: W * 0.06, copyTop: H * 0.12,
+    phoneH: H * 0.9, phoneX: W * 0.64, phoneY: H * 0.07, phoneRot: 7,
+    stamp: H * 0.22, stampX: W * 0.835, stampY: H * 0.64,
+  },
+}
+const L = LAYOUTS[layout]
+const u = L.u
+
+const frame = document.getElementById('frame')
+frame.style.width = W + 'px'
+frame.style.height = H + 'px'
+frame.style.setProperty('--u', u + 'px')
+frame.style.setProperty('--line', Math.max(3, u * 0.55) + 'px')
+frame.style.setProperty('--shadow', u * 0.9 + 'px')
+frame.style.setProperty('--stroke', u * 1.1 + 'px')
+frame.style.setProperty('--tshadow', u * 0.9 + 'px')
+
+const copy = document.getElementById('copy')
+copy.style.left = L.copyLeft + 'px'
+copy.style.top = L.copyTop + 'px'
+const badge = document.getElementById('badge')
+badge.style.fontSize = L.badge * u + 'px'
+badge.style.padding = `${u * 0.9}px ${u * 2.2}px`
+badge.style.marginBottom = u * 3.2 + 'px'
+const title = document.getElementById('title')
+title.style.fontSize = L.title * u + 'px'
+const catchEl = document.getElementById('catch')
+catchEl.style.fontSize = L.catch * u + 'px'
+catchEl.style.marginTop = u * 4 + 'px'
+
+const stamp = document.getElementById('stamp')
+stamp.style.width = stamp.style.height = L.stamp + 'px'
+stamp.style.left = L.stampX + 'px'
+stamp.style.top = L.stampY + 'px'
+document.getElementById('stamp1').style.fontSize = L.stamp * 0.24 + 'px'
+document.getElementById('stamp2').style.fontSize = L.stamp * 0.2 + 'px'
+
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function hiDpiCanvas(canvas, w, h) {
+  canvas.width = w
+  canvas.height = h
+  canvas.style.width = w + 'px'
+  canvas.style.height = h + 'px'
+  return canvas.getContext('2d')
+}
+
+function triangleDown(ctx, x, y, s, color) {
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(x, y + s)
+  ctx.lineTo(x - s, y - s)
+  ctx.lineTo(x + s, y - s)
+  ctx.closePath()
+  ctx.fill()
+}
+
+function triangleUp(ctx, x, y, w, h, color) {
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(x, y - h / 2)
+  ctx.lineTo(x - w / 2, y + h / 2)
+  ctx.lineTo(x + w / 2, y + h / 2)
+  ctx.closePath()
+  ctx.fill()
+}
+
+function dot(ctx, x, y, r, color) {
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+function healEnemy(ctx, x, y, r) {
+  dot(ctx, x, y, r, '#00CC88')
+  ctx.fillStyle = '#FFFFFF'
+  ctx.fillRect(x - r * 0.43, y - r * 0.14, r * 0.86, r * 0.28)
+  ctx.fillRect(x - r * 0.14, y - r * 0.43, r * 0.28, r * 0.86)
+}
+
+function hexBoss(ctx, x, y, r, color) {
+  ctx.fillStyle = color
+  ctx.beginPath()
+  for (let i = 0; i < 6; i++) {
+    const a = (i * Math.PI) / 3 - Math.PI / 6
+    const px = x + Math.cos(a) * r * 1.4
+    const py = y + Math.sin(a) * r * 0.8
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
+  }
+  ctx.closePath()
+  ctx.fill()
+}
+
+function burst(ctx, rand, x, y, spread, n, colors) {
+  for (let i = 0; i < n; i++) {
+    const a = rand() * Math.PI * 2
+    const d = rand() * spread
+    ctx.globalAlpha = 0.4 + rand() * 0.6
+    const s = 1.5 + rand() * spread * 0.09
+    ctx.fillStyle = colors[i % colors.length]
+    ctx.fillRect(x + Math.cos(a) * d - s / 2, y + Math.sin(a) * d - s / 2, s, s)
+  }
+  ctx.globalAlpha = 1
+}
+
+function drawBackground() {
+  const ctx = hiDpiCanvas(document.getElementById('bg'), W, H)
+  const rand = mulberry32(7)
+  const g = ctx.createLinearGradient(0, 0, W, H)
+  g.addColorStop(0, '#05030f')
+  g.addColorStop(1, '#120837')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, W, H)
+
+  const nebulae = [
+    [W * 0.78, H * 0.5, H * 0.9, 'rgba(170, 0, 255, 0.28)'],
+    [W * 0.25, H * 1.0, H * 0.8, 'rgba(255, 34, 102, 0.16)'],
+    [W * 0.5, H * 0.0, H * 0.7, 'rgba(0, 229, 255, 0.10)'],
+  ]
+  for (const [x, y, r, c] of nebulae) {
+    const ng = ctx.createRadialGradient(x, y, 0, x, y, r)
+    ng.addColorStop(0, c)
+    ng.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = ng
+    ctx.fillRect(0, 0, W, H)
+  }
+
+  const starCount = Math.round((W * H) / 2400)
+  for (let i = 0; i < starCount; i++) {
+    ctx.globalAlpha = 0.25 + rand() * 0.75
+    const s = (0.6 + rand() * 1.6) * (u / 6)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(rand() * W, rand() * H, s, s)
+  }
+  ctx.globalAlpha = 1
+
+  ctx.globalAlpha = 0.9
+  const streakX = L.phoneX - u * 6
+  const copyRight = document.getElementById('copy').getBoundingClientRect().right + u * 3
+  for (let i = 0; i < 9; i++) {
+    const y = H * (0.1 + rand() * 0.8)
+    const x = streakX - rand() * u * 22
+    const len = Math.min(u * (6 + rand() * 14), x - copyRight)
+    if (len < u * 3) continue
+    ctx.strokeStyle = i % 3 === 0 ? 'rgba(0,255,255,0.5)' : 'rgba(255,230,0,0.35)'
+    ctx.lineWidth = Math.max(1, u * 0.25)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(x - len, y)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+
+  const deco = [
+    ['tri', 0.60, 0.20, 3.4, '#FF4444'],
+    ['tri', 0.565, 0.78, 2.6, '#FF8800'],
+    ['tri', 0.955, 0.86, 3.6, '#FFAA00'],
+    ['heal', 0.62, 0.55, 2.2],
+    ['dot', 0.585, 0.40, 0.9, '#FF0000'],
+    ['dot', 0.6, 0.43, 0.9, '#FF0000'],
+    ['dot', 0.615, 0.46, 0.9, '#FF0000'],
+  ]
+  for (const d of deco) {
+    const x = W * d[1]
+    const y = H * d[2]
+    const s = d[3] * u
+    const sr = L.stamp / 2
+    if (x - s < copyRight) continue
+    if (Math.hypot(x - (L.stampX + sr), y - (L.stampY + sr)) < sr + s * 1.5) continue
+    ctx.globalAlpha = 0.85
+    if (d[0] === 'tri') triangleDown(ctx, x, y, s, d[4])
+    if (d[0] === 'heal') healEnemy(ctx, x, y, s)
+    if (d[0] === 'dot') dot(ctx, x, y, s, d[4])
+  }
+  ctx.globalAlpha = 1
+  burst(ctx, rand, W * 0.6, H * 0.2, u * 6, 26, ['#FF4444', '#FFE600', '#FFFFFF'])
+}
+
+function drawScreen(screenW, screenH) {
+  const canvas = document.getElementById('screen')
+  const dpr = screenW / 390
+  const ctx = hiDpiCanvas(canvas, screenW, screenH)
+  ctx.scale(dpr, screenH / 844)
+  const rand = mulberry32(42)
+
+  ctx.fillStyle = '#000000'
+  ctx.fillRect(0, 0, 390, 844)
+  for (let i = 0; i < 80; i++) {
+    ctx.globalAlpha = 0.3 + rand() * 0.7
+    const s = 1 + rand() * 2
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(rand() * 390, rand() * 844, s, s)
+  }
+  ctx.globalAlpha = 1
+
+  const bossX = 195
+  const bossY = 210
+  for (let ring = 0; ring < 3; ring++) {
+    const n = 14
+    const dist = 80 + ring * 70
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + ring * 0.22
+      const x = bossX + Math.cos(a) * dist
+      const y = bossY + Math.sin(a) * dist * 1.05
+      if (y < 110 || x < 6 || x > 384) continue
+      dot(ctx, x, y, 6, '#FF0000')
+    }
+  }
+
+  hexBoss(ctx, bossX, bossY, 40, '#AA00FF')
+  ctx.fillStyle = '#333'
+  ctx.fillRect(bossX - 50, bossY - 60, 100, 8)
+  ctx.fillStyle = '#AA00FF'
+  ctx.fillRect(bossX - 50, bossY - 60, 58, 8)
+  ctx.strokeStyle = '#FFFFFF'
+  ctx.lineWidth = 1
+  ctx.strokeRect(bossX - 50, bossY - 60, 100, 8)
+
+  triangleDown(ctx, 70, 470, 15, '#FF4444')
+  triangleDown(ctx, 320, 430, 15, '#FF4444')
+  triangleDown(ctx, 300, 560, 20, '#FF8800')
+  dot(ctx, 285, 600, 5, '#FF4444')
+  dot(ctx, 272, 632, 5, '#FF4444')
+  healEnemy(ctx, 90, 590, 14)
+  burst(ctx, rand, 150, 400, 26, 22, ['#FF4444', '#FFE600', '#FFFFFF'])
+
+  const px = 190
+  const py = 740
+  for (let k = 0; k < 7; k++) {
+    const y = py - 40 - k * 58
+    dot(ctx, px, y, 4, '#FFFF00')
+    dot(ctx, px - Math.tan(Math.PI / 12) * (py - 40 - y) - 10, y + 6, 4, '#FFFF00')
+    dot(ctx, px + Math.tan(Math.PI / 12) * (py - 40 - y) + 10, y + 6, 4, '#FFFF00')
+  }
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.85)'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(px, py, 30, 0, Math.PI * 2)
+  ctx.stroke()
+  triangleUp(ctx, px, py, 30, 36, '#FFFFFF')
+
+  ctx.fillStyle = '#FFFFFF'
+  ctx.font = '16px monospace'
+  ctx.textBaseline = 'top'
+  ctx.fillText('SCORE', 16, 14)
+  ctx.fillText('STAGE', 172, 14)
+  ctx.textAlign = 'right'
+  ctx.fillText('LIVES', 374, 14)
+  ctx.font = 'bold 20px monospace'
+  ctx.fillText('♥♥♥', 374, 34)
+  ctx.textAlign = 'center'
+  ctx.fillText('4', 195, 34)
+  ctx.textAlign = 'left'
+  ctx.fillText('12,480', 16, 34)
+  ctx.font = '11px monospace'
+  ctx.fillStyle = '#00E5FF'
+  ctx.textAlign = 'right'
+  ctx.fillText('GUARD READY', 374, 62)
+  ctx.fillRect(310, 78, 64, 6)
+}
+
+function placePhone() {
+  const phone = document.getElementById('phone')
+  const edge = 0.035 + 0.012
+  const screenH = L.phoneH * 0.92
+  const screenW = (screenH * 390) / 844
+  const pw = screenW / (1 - 2 * edge)
+  phone.style.setProperty('--pw', pw + 'px')
+  phone.style.left = L.phoneX + 'px'
+  phone.style.top = L.phoneY + 'px'
+  phone.style.transform = `rotate(${L.phoneRot}deg)`
+  drawScreen(Math.round(screenW), Math.round(screenH))
+}
+
+document.fonts.ready.then(() => {
+  const shooter = title.lastChild
+  const range = document.createRange()
+  range.setStart(shooter, 1)
+  range.setEnd(shooter, 2)
+  const hOffset = range.getBoundingClientRect().left - copy.getBoundingClientRect().left
+  document.getElementById('line1').style.marginLeft = hOffset + 'px'
+  document.getElementById('line2').style.marginLeft = hOffset + L.catch * u * 2.5 + 'px'
+  copy.style.top = (H - copy.offsetHeight) / 2 + 'px'
+  drawBackground()
+  placePhone()
+  document.body.dataset.ready = '1'
+})
+</script>
+</body>
+</html>

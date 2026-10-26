@@ -20,6 +20,7 @@ interface Props {
 export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<GameEngine | null>(null)
+  const autoPausedRef = useRef(false)
   const [hudData, setHudData] = useState({ score: 0, lives: 3, stage: 1, guardValue: 0, guardMax: 1 })
   const [stateType, setStateType] = useState<GameState['type']>('IDLE')
 
@@ -70,19 +71,31 @@ export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Pr
     engineRef.current = engine
     engine.start()
 
+    const pauseForInterruption = () => {
+      const before = engine.state
+      if (before.type === 'PAUSED') return
+      engine.pause()
+      autoPausedRef.current = engine.state !== before
+    }
+    const resumeAfterInterruption = () => {
+      if (!autoPausedRef.current || document.hidden) return
+      autoPausedRef.current = false
+      engine.resume()
+    }
     const onVisibility = () => {
-      if (document.hidden) {
-        engine.pause()
-      } else {
-        engine.resume()
-      }
+      if (document.hidden) pauseForInterruption()
+      else resumeAfterInterruption()
     }
     document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('blur', pauseForInterruption)
+    window.addEventListener('focus', resumeAfterInterruption)
 
     return () => {
       engine.stop()
       cleanupTouch()
       document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('blur', pauseForInterruption)
+      window.removeEventListener('focus', resumeAfterInterruption)
     }
   }, [mode, onGameOver, onGameClear])
 
@@ -92,6 +105,7 @@ export default function GameCanvas({ mode, onGameOver, onGameClear, onQuit }: Pr
   const handlePauseToggle = () => {
     const engine = engineRef.current
     if (!engine) return
+    autoPausedRef.current = false
     if (isPaused) engine.resume()
     else engine.pause()
   }

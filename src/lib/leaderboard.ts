@@ -47,14 +47,37 @@ export function rankEntries(entries: LeaderboardEntry[]): number[] {
   return ranks
 }
 
-export async function fetchLeaderboard(board: LeaderboardBoard, submittedId?: string): Promise<LeaderboardEntry[]> {
-  const query = submittedId ? `mode=${board}&after=${encodeURIComponent(submittedId)}` : `mode=${board}`
-  const res = await fetch(`/api/scores?${query}`)
-  if (!res.ok) throw new Error(`Failed to fetch leaderboard: ${res.status}`)
-  const data = await res.json()
-  return data.entries ?? []
+export const LEADERBOARD_REQUEST_TIMEOUT_MS = 8000
+
+async function requestJson(input: string, init: RequestInit = {}): Promise<{ res: Response; data: unknown }> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), LEADERBOARD_REQUEST_TIMEOUT_MS)
+  try {
+    const res = await fetch(input, { ...init, signal: controller.signal })
+    const data: unknown = await res.json()
+    return { res, data }
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
+function isLeaderboardEntry(value: unknown): value is LeaderboardEntry {
+  if (typeof value !== 'object' || value === null) return false
+  const entry = value as Record<string, unknown>
+  return typeof entry.name === 'string' && Number.isFinite(entry.score) && Number.isFinite(entry.stage)
+}
+
+export function parseLeaderboardEntries(data: unknown): LeaderboardEntry[] {
+  const entries = (data as { entries?: unknown } | null)?.entries
+  return Array.isArray(entries) ? entries.filter(isLeaderboardEntry) : []
+}
+
+export async function fetchLeaderboard(board: LeaderboardBoard, submittedId?: string): Promise<LeaderboardEntry[]> {
+  const query = submittedId ? `mode=${board}&after=${encodeURIComponent(submittedId)}` : `mode=${board}`
+  const { res, data } = await requestJson(`/api/scores?${query}`)
+  if (!res.ok) throw new Error(`Failed to fetch leaderboard: ${res.status}`)
+  return parseLeaderboardEntries(data)
+}
 
 export type SubmitScoreResult =
   | { ok: true; rank: number; id: string }
@@ -66,13 +89,15 @@ export async function submitLeaderboardScore(
 ): Promise<SubmitScoreResult> {
   try {
     const clientId = loadClientId()
-    const res = await fetch('/api/scores', {
+    const { res, data: body } = await requestJson('/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...entry, mode: board, clientId }),
     })
-    const data = await res.json()
-    if (res.ok && data.ok) return { ok: true, rank: data.rank, id: data.id }
+    const data = (body ?? {}) as { ok?: unknown; rank?: unknown; id?: unknown; error?: unknown }
+    if (res.ok && data.ok && Number.isFinite(data.rank) && typeof data.id === 'string') {
+      return { ok: true, rank: data.rank as number, id: data.id }
+    }
     if (data.error === 'invalid name') return { ok: false, reason: 'invalid_name' }
     if (data.error === 'inappropriate name') return { ok: false, reason: 'inappropriate_name' }
     if (data.error === 'submission disabled') return { ok: false, reason: 'disabled' }

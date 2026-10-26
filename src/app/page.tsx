@@ -7,6 +7,7 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/game/constants'
 import RotatePrompt from '@/components/RotatePrompt'
 import Leaderboard from '@/components/Leaderboard'
 import StatsModal from '@/components/StatsModal'
+import SponsorCredit from '@/components/SponsorCredit'
 import { useViewportScale } from '@/components/useViewportScale'
 
 const MENU_BUTTON: CSSProperties = {
@@ -155,6 +156,8 @@ export default function StartPage() {
             STATS
           </button>
         </div>
+
+        <SponsorCredit style={{ position: 'relative', top: '5px', zIndex: 1 }} />
 
         <p
           style={{

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { fetchLeaderboard, rankEntries, type LeaderboardBoard, type LeaderboardEntry } from '@/lib/leaderboard'
+import SponsorCredit from './SponsorCredit'
 
 interface Props {
   highlightId?: string
@@ -19,6 +20,7 @@ export default function Leaderboard({ highlightId, initialBoard = 'normal', onCl
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [reloadCount, setReloadCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -36,7 +38,7 @@ export default function Leaderboard({ highlightId, initialBoard = 'normal', onCl
         setLoading(false)
       })
     return () => { cancelled = true }
-  }, [board, initialBoard, highlightId])
+  }, [board, initialBoard, highlightId, reloadCount])
 
   const ranks = rankEntries(entries)
 
@@ -120,9 +122,25 @@ export default function Leaderboard({ highlightId, initialBoard = 'normal', onCl
           <p style={{ textAlign: 'center', color: '#888', marginTop: '40px' }}>LOADING...</p>
         )}
         {error && (
-          <p style={{ textAlign: 'center', color: '#FF4444', marginTop: '40px' }}>
-            読み込みに失敗しました
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', marginTop: '40px' }}>
+            <p style={{ color: '#FF4444' }}>読み込みに失敗しました</p>
+            <button
+              onClick={() => setReloadCount(c => c + 1)}
+              style={{
+                background: 'transparent',
+                color: '#FFFFFF',
+                border: '2px solid #FFFFFF',
+                borderRadius: '8px',
+                padding: '8px 20px',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                fontFamily: 'monospace',
+                cursor: 'pointer',
+              }}
+            >
+              もう一度読み込む
+            </button>
+          </div>
         )}
         {!loading && !error && entries.length === 0 && (
           <p style={{ textAlign: 'center', color: '#888', marginTop: '40px' }}>
@@ -160,6 +178,7 @@ export default function Leaderboard({ highlightId, initialBoard = 'normal', onCl
           )
         })}
       </div>
+      <SponsorCredit style={{ flexShrink: 0, padding: '8px 0 16px' }} />
     </div>
   )
 }

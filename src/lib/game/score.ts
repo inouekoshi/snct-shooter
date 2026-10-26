@@ -22,8 +22,8 @@ function highScoreKey(mode: DifficultyMode): string {
 
 export function loadHighScore(mode: DifficultyMode = 'NORMAL'): number {
   try {
-    const v = localStorage.getItem(highScoreKey(mode))
-    return v ? parseInt(v, 10) : 0
+    const v = parseInt(localStorage.getItem(highScoreKey(mode)) ?? '', 10)
+    return Number.isFinite(v) && v > 0 ? v : 0
   } catch {
     return 0
   }

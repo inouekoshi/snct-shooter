@@ -69,6 +69,27 @@ describe('loadStats', () => {
     const stats = loadStats()
     expect(stats.totalPlays).toBe(0)
   })
+
+  it('JSONが null のとき空の統計を返す', () => {
+    store['shooter-stats'] = 'null'
+    expect(loadStats().records).toHaveLength(0)
+  })
+
+  it('形のおかしい記録や数値でない集計値は捨てる', () => {
+    store['shooter-stats'] = JSON.stringify({
+      records: [makeRecord(800, 3), { score: 'x', stage: 1, playedAt: 1 }, null, makeRecord(500, 2, { kills: undefined })],
+      bestScore: 'oops',
+      maxStageReached: null,
+      totalPlays: 2,
+      totalKills: { normal: 5, attack: 'x' },
+    })
+    const stats = loadStats()
+    expect(stats.records.map((r) => r.score)).toEqual([800, 500])
+    expect(stats.records[1].kills).toEqual({ normal: 0, attack: 0, boss: 0, heal: 0 })
+    expect(stats.bestScore).toBe(800)
+    expect(stats.maxStageReached).toBe(0)
+    expect(stats.totalKills).toEqual({ normal: 5, attack: 0, boss: 0, heal: 0 })
+  })
 })
 
 describe('saveGameRecord', () => {

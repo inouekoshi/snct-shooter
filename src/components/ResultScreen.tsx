@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { DifficultyMode } from '@/lib/game/difficulty'
 import Leaderboard from './Leaderboard'
 import ScoreSubmit from './ScoreSubmit'
+import SponsorCredit from './SponsorCredit'
 import { BTN_PRIMARY, BTN_OUTLINE } from './buttonStyles'
 
 export interface GameResult {
@@ -108,6 +109,8 @@ export default function ResultScreen({ result, mode, onRetry, onHome }: Props) {
           HOME
         </button>
       </div>
+
+      <SponsorCredit style={{ position: 'absolute', bottom: '16px', left: 0, right: 0 }} />
 
       {showLeaderboard && (
         <Leaderboard
