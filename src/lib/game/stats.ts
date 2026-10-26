@@ -50,18 +50,40 @@ function bestScoreOf(records: GameRecord[]): number {
   return Math.max(0, ...records.filter(isSummaryTarget).map((r) => r.score))
 }
 
+function finiteOr(value: unknown, fallback: number): number {
+  return Number.isFinite(value) ? (value as number) : fallback
+}
+
+function isGameRecord(value: unknown): value is GameRecord {
+  if (typeof value !== 'object' || value === null) return false
+  const record = value as Record<string, unknown>
+  return Number.isFinite(record.score) && Number.isFinite(record.stage) && Number.isFinite(record.playedAt)
+}
+
+function parseKillCounts(value: unknown): KillCounts {
+  const kills = (typeof value === 'object' && value !== null ? value : {}) as Record<string, unknown>
+  return {
+    normal: finiteOr(kills.normal, 0),
+    attack: finiteOr(kills.attack, 0),
+    boss: finiteOr(kills.boss, 0),
+    heal: finiteOr(kills.heal, 0),
+  }
+}
+
 export function loadStats(): LifetimeStats {
   try {
     const raw = localStorage.getItem(STATS_KEY)
     if (!raw) return EMPTY_STATS
-    const parsed = JSON.parse(raw) as Partial<LifetimeStats>
-    const records = parsed.records ?? []
+    const parsed = (JSON.parse(raw) ?? {}) as Record<string, unknown>
+    const records = Array.isArray(parsed.records)
+      ? parsed.records.filter(isGameRecord).map((r) => ({ ...r, kills: parseKillCounts(r.kills) }))
+      : []
     return {
       records,
-      bestScore: parsed.bestScore ?? bestScoreOf(records),
-      maxStageReached: parsed.maxStageReached ?? 0,
-      totalPlays: parsed.totalPlays ?? records.length,
-      totalKills: { ...EMPTY_STATS.totalKills, ...parsed.totalKills },
+      bestScore: finiteOr(parsed.bestScore, bestScoreOf(records)),
+      maxStageReached: finiteOr(parsed.maxStageReached, 0),
+      totalPlays: finiteOr(parsed.totalPlays, records.length),
+      totalKills: parseKillCounts(parsed.totalKills),
     }
   } catch {
     return EMPTY_STATS

@@ -139,7 +139,8 @@ type GameState =
 
 - コメントは原則不要（命名で意図を伝える）
 - `'use client'` はゲーム関連コンポーネントすべてに付与
-- エラーハンドリングは `localStorage` 不可時のフォールバックと API Routes の失敗応答のみ
+- エラーハンドリングは `localStorage` 不可時のフォールバック・保存データやAPI応答の形チェック・API Routes の失敗応答・ランキング通信のタイムアウト（`LEADERBOARD_REQUEST_TIMEOUT_MS`）に絞る。画面全体の例外は `app/error.tsx`・`global-error.tsx`・`not-found.tsx`（共通の `ErrorFallback`）で受ける
+- 画面の縮小率は `src/lib/viewport.ts` で幅・高さ（セーフエリアを除く）の小さいほうに合わせる
 - 画像ファイルは使わない（Canvas 図形描画のみ）。例外は静的画面下部のスポンサー表記（`SponsorCredit`）で使う `public/bengo4-logo.png`
 - サウンドなし
 - ゲームロジック（`lib/game/`）や API を変更したらテストも追加・更新する

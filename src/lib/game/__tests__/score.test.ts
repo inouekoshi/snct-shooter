@@ -23,6 +23,11 @@ describe('score', () => {
     expect(loadHighScore()).toBe(0)
   })
 
+  it('保存値が数値でなければ0を返す', () => {
+    localStorageMock.setItem('shooting-highscore', 'abc')
+    expect(loadHighScore()).toBe(0)
+  })
+
   it('保存したハイスコアを読み込める', () => {
     saveHighScore(5000)
     expect(loadHighScore()).toBe(5000)
