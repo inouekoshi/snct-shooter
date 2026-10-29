@@ -25,7 +25,7 @@ export default function SponsorCredit({ style }: Props) {
         ...style,
       }}
     >
-      <span>supported by</span>
+      <span>sponsored by</span>
       <Image
         src="/bengo4-logo.png"
         alt="弁護士ドットコム"
