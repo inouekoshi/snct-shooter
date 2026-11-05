@@ -7,6 +7,16 @@ vi.mock('@/lib/firestore', () => ({
   consumeSubmissionQuota: vi.fn(),
 }))
 
+const leaderboardClosed = vi.hoisted(() => ({ value: false }))
+
+vi.mock('@/lib/leaderboard', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/leaderboard')>()
+  return {
+    ...actual,
+    get LEADERBOARD_CLOSED() { return leaderboardClosed.value },
+  }
+})
+
 import { GET, POST } from '../route'
 import { getTopScores, addScore, consumeSubmissionQuota } from '@/lib/firestore'
 
@@ -19,6 +29,7 @@ beforeEach(() => {
   vi.mocked(getTopScores).mockReset()
   vi.mocked(addScore).mockReset().mockResolvedValue({ rank: 3, id: 'doc1' })
   vi.mocked(consumeSubmissionQuota).mockReset().mockResolvedValue(true)
+  leaderboardClosed.value = false
 })
 
 describe('GET /api/scores', () => {
@@ -143,6 +154,15 @@ describe('POST /api/scores', () => {
     expect(res.status).toBe(503)
     expect(await res.json()).toEqual({ error: 'submission disabled' })
     expect(addScore).not.toHaveBeenCalled()
+  })
+
+  it('ランキングの受付を締め切ったら保存せず503を返す', async () => {
+    leaderboardClosed.value = true
+    const res = await post({ name: 'a', score: 100, stage: 1 })
+    expect(res.status).toBe(503)
+    expect(await res.json()).toEqual({ error: 'submission disabled' })
+    expect(addScore).not.toHaveBeenCalled()
+    expect(consumeSubmissionQuota).not.toHaveBeenCalled()
   })
 
   describe('投稿回数の制限', () => {

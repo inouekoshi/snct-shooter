@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { loadHighScore, isExtraUnlocked } from '@/lib/game/score'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/game/constants'
@@ -8,6 +8,9 @@ import RotatePrompt from '@/components/RotatePrompt'
 import Leaderboard from '@/components/Leaderboard'
 import StatsModal from '@/components/StatsModal'
 import SponsorCredit from '@/components/SponsorCredit'
+import StarBackground from '@/components/StarBackground'
+import ClosingScreen from '@/components/ClosingScreen'
+import { LEADERBOARD_CLOSED } from '@/lib/leaderboard'
 import { useViewportScale } from '@/components/useViewportScale'
 
 const MENU_BUTTON: CSSProperties = {
@@ -35,6 +38,22 @@ const SUB_BUTTON: CSSProperties = {
 
 const EXTRA_WIDTH = '296px'
 
+const CLOSING_SEEN_KEY = 'shooter-closing-seen'
+
+function hasSeenClosing(): boolean {
+  try {
+    return sessionStorage.getItem(CLOSING_SEEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markClosingSeen(): void {
+  try {
+    sessionStorage.setItem(CLOSING_SEEN_KEY, '1')
+  } catch {}
+}
+
 export default function StartPage() {
   const router = useRouter()
   const [highScore, setHighScore] = useState(0)
@@ -44,6 +63,16 @@ export default function StartPage() {
   const scale = useViewportScale()
   const [showRanking, setShowRanking] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [showClosing, setShowClosing] = useState(LEADERBOARD_CLOSED)
+
+  useLayoutEffect(() => {
+    if (LEADERBOARD_CLOSED && hasSeenClosing()) setShowClosing(false)
+  }, [])
+
+  function closeClosing() {
+    markClosingSeen()
+    setShowClosing(false)
+  }
 
   useEffect(() => {
     setHighScore(loadHighScore())
@@ -79,6 +108,23 @@ export default function StartPage() {
             🚀 SHOOTING
           </h1>
           <p style={{ fontSize: '14px', color: '#888' }}>暇つぶしシューティング</p>
+          {LEADERBOARD_CLOSED && (
+            <button
+              onClick={() => setShowClosing(true)}
+              style={{
+                marginTop: '12px',
+                background: 'transparent',
+                border: 'none',
+                color: '#FFFF00',
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+              }}
+            >
+              高専祭は終了しました ▶ 結果を見る
+            </button>
+          )}
         </div>
 
         {highScore > 0 && (
@@ -172,6 +218,12 @@ export default function StartPage() {
           iPhoneは「共有」→「ホーム画面に追加」でオフラインでも遊べます
         </p>
 
+        {showClosing && (
+          <ClosingScreen
+            onPlay={closeClosing}
+            onShowRanking={() => setShowRanking(true)}
+          />
+        )}
         {showRanking && (
           <Leaderboard onClose={() => setShowRanking(false)} />
         )}
@@ -180,56 +232,5 @@ export default function StartPage() {
         )}
       </div>
     </>
-  )
-}
-
-interface BackgroundStar {
-  size: number
-  left: number
-  top: number
-  opacity: number
-}
-
-function createBackgroundStars(count: number): BackgroundStar[] {
-  return Array.from({ length: count }, () => ({
-    size: 1 + Math.random() * 2,
-    left: Math.random() * 100,
-    top: Math.random() * 100,
-    opacity: 0.3 + Math.random() * 0.7,
-  }))
-}
-
-function StarBackground() {
-  const [stars, setStars] = useState<BackgroundStar[]>([])
-
-  useEffect(() => {
-    setStars(createBackgroundStars(60))
-  }, [])
-
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        overflow: 'hidden',
-        pointerEvents: 'none',
-      }}
-    >
-      {stars.map((star, i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            width: `${star.size}px`,
-            height: `${star.size}px`,
-            background: '#FFF',
-            borderRadius: '50%',
-            left: `${star.left}%`,
-            top: `${star.top}%`,
-            opacity: star.opacity,
-          }}
-        />
-      ))}
-    </div>
   )
 }

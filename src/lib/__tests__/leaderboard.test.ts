@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   isValidPlayerName, rankEntries, fetchLeaderboard, submitLeaderboardScore, parseLeaderboardEntries,
+  podiumEntries, parseClosingSummary, fetchClosingSummary,
   LEADERBOARD_REQUEST_TIMEOUT_MS, type LeaderboardEntry,
 } from '../leaderboard'
 
@@ -60,6 +61,54 @@ describe('rankEntries', () => {
 
   it('空配列なら空配列', () => {
     expect(rankEntries([])).toEqual([])
+  })
+})
+
+describe('podiumEntries', () => {
+  it('3位までを順位つきで返す', () => {
+    const entries = [entry(500), entry(400), entry(300), entry(200)]
+    expect(podiumEntries(entries).map(({ rank, entry }) => [rank, entry.score])).toEqual([[1, 500], [2, 400], [3, 300]])
+  })
+
+  it('3位と同点のエントリも含める', () => {
+    const entries = [entry(500), entry(400), entry(300), entry(300), entry(200)]
+    expect(podiumEntries(entries).map(({ rank }) => rank)).toEqual([1, 2, 3, 3])
+  })
+
+  it('同点で4位以下が繰り上がらない', () => {
+    const entries = [entry(500), entry(500), entry(500), entry(400)]
+    expect(podiumEntries(entries).map(({ rank }) => rank)).toEqual([1, 1, 1])
+  })
+})
+
+describe('parseClosingSummary', () => {
+  it('形の正しい集計はそのまま返す', () => {
+    const data = { normal: { total: 3, top: [entry(100)] }, extra: { total: 0, top: [] } }
+    expect(parseClosingSummary(data)).toEqual(data)
+  })
+
+  it('欠けた値やおかしな値は0件・空として扱う', () => {
+    expect(parseClosingSummary({ normal: { total: -1, top: [{ name: 1 }] } })).toEqual({
+      normal: { total: 0, top: [] },
+      extra: { total: 0, top: [] },
+    })
+    expect(parseClosingSummary(null)).toEqual({ normal: { total: 0, top: [] }, extra: { total: 0, top: [] } })
+  })
+})
+
+describe('fetchClosingSummary', () => {
+  it('成功時は集計を返す', async () => {
+    const fn = mockFetch(200, { normal: { total: 5, top: [entry(100)] }, extra: { total: 1, top: [] } })
+    await expect(fetchClosingSummary()).resolves.toEqual({
+      normal: { total: 5, top: [entry(100)] },
+      extra: { total: 1, top: [] },
+    })
+    expect(fn).toHaveBeenCalledWith('/api/scores/summary', withSignal)
+  })
+
+  it('APIがエラーを返したら例外にする', async () => {
+    mockFetch(500, { error: 'Failed to fetch summary' })
+    await expect(fetchClosingSummary()).rejects.toThrow()
   })
 })
 

@@ -169,6 +169,7 @@ rate_limits (または rate_limits_dev)/{IPのSHA-256ハッシュ}
 | メソッド | パス | 機能 |
 |---|---|---|
 | GET | `/api/scores?mode=normal\|extra` | トップ20のスコアを取得（`mode` 省略時は NORMAL）。各エントリにドキュメントID（`id`）を含む。成功時は `Cache-Control: public, s-maxage=10, stale-while-revalidate=50` を付け、Vercel の CDN で10秒キャッシュして Firestore の読み取り回数を減らす（クエリごとに別キャッシュ）。投稿直後にランキングを開くときは `&after=<ドキュメントID>` を付けてキャッシュを外し、自分のスコアを必ず表示する |
+| GET | `/api/scores/summary` | クロージング画面用に、NORMAL / EXTRA それぞれの登録件数（Firestore の `count()` 集計）と上位10件を `{ normal: { total, top }, extra: { total, top } }` で返す。締め切り後は値が変わらないので `Cache-Control: public, s-maxage=300, stale-while-revalidate=3600` で長めにキャッシュする |
 | POST | `/api/scores` | スコアを投稿（ボディ: `{ name, score, stage, mode }`、`mode` 省略時は NORMAL）。バリデーション通過後にFirestoreへ書き込み、登録された順位とドキュメントID（`{ ok: true, rank, id }`）を返却。失敗時のエラーは下表 |
 
 POST のエラー応答（クライアントは `src/lib/leaderboard.ts` の `submitLeaderboardScore` で理由ごとに分け、画面に出し分ける）:
@@ -179,7 +180,7 @@ POST のエラー応答（クライアントは `src/lib/leaderboard.ts` の `su
 | 400 | `inappropriate name` | NG ワードを含む | この名前は登録できません |
 | 400 | `invalid score` / `invalid stage` / `invalid mode` | スコア・ステージ・モードが不正、またはスコア上限を超えた | 送信に失敗しました |
 | 429 | `too many requests` | 同じ IP からの投稿が1分間の上限を超えた | 投稿が集中しています。1分ほど待ってからもう一度お試しください |
-| 503 | `submission disabled` | `SCORES_SUBMISSION_DISABLED=1` で投稿を停止中 | 現在スコアの投稿を停止しています |
+| 503 | `submission disabled` | `SCORES_SUBMISSION_DISABLED=1` で投稿を停止中、または `LEADERBOARD_CLOSED` で受付を締め切った | 現在スコアの投稿を停止しています |
 | 500 | `Failed to submit score` | Firestore のエラーなど | 送信に失敗しました |
 
 ### 4.4 サーバーサイドバリデーション（チート対策）
@@ -211,7 +212,9 @@ Firebase Admin SDK のサービスアカウントキーは `FIREBASE_SERVICE_ACC
 ### 4.7 UI コンポーネント
 `src/components/Leaderboard.tsx` は固定の論理解像度（390×844）上にオーバーレイ表示するコンポーネント。NORMAL / EXTRA をタブで切り替えられる。ホーム画面の RANKING ボタンと、結果画面（`ResultScreen.tsx`）の「ランキングを見る」ボタンから呼び出される。投稿した自分のエントリ（ドキュメントIDが一致する1件）だけが黄色（`#FFFF00`）でハイライトされる。
 
-スコア投稿フロー（名前入力・送信・順位表示）は `ScoreSubmit.tsx` にまとめている。EASY モードでは表示しない。
+スコア投稿フロー（名前入力・送信・順位表示）は `ScoreSubmit.tsx` にまとめている。EASY モードでは表示しない。`LEADERBOARD_CLOSED` が `true` のあいだも表示せず、代わりに受付終了の案内を出す。
+
+`ClosingScreen.tsx` は高専祭終了後のクロージング画面。トップページ（`page.tsx`）の上に重ねて出し、`/api/scores/summary` の集計からお礼・登録数・各ボードの3位までを表示する。3位までの切り出しは同点を同順位として扱う `podiumEntries`（`leaderboard.ts`）で行う。星の背景はスタート画面と共通の `StarBackground.tsx` を使う。
 
 ## 5. デプロイ・ブランチ構成
 

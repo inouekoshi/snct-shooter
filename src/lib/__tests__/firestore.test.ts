@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => {
   const limit = vi.fn(() => ({ get: topGet }))
   const orderBy = vi.fn(() => ({ limit }))
   const doc = vi.fn((id: string) => ({ id }))
-  const collection = vi.fn(() => ({ add, where, orderBy, doc }))
+  const totalGet = vi.fn()
+  const collection = vi.fn(() => ({ add, where, orderBy, doc, count: () => ({ get: totalGet }) }))
   const txGet = vi.fn()
   const txSet = vi.fn()
   const runTransaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({ get: txGet, set: txSet }))
@@ -18,7 +19,7 @@ const mocks = vi.hoisted(() => {
     static fromMillis(ms: number) { return new Timestamp(ms) }
     toMillis() { return this.ms }
   }
-  return { add, countGet, where, topGet, limit, orderBy, doc, collection, txGet, txSet, runTransaction, Timestamp }
+  return { add, countGet, totalGet, where, topGet, limit, orderBy, doc, collection, txGet, txSet, runTransaction, Timestamp }
 })
 
 vi.mock('firebase-admin/app', () => ({
@@ -32,7 +33,7 @@ vi.mock('firebase-admin/firestore', () => ({
   Timestamp: mocks.Timestamp,
 }))
 
-import { addScore, getTopScores, consumeSubmissionQuota } from '../firestore'
+import { addScore, getTopScores, countScores, consumeSubmissionQuota } from '../firestore'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -70,6 +71,14 @@ describe('getTopScores', () => {
     ])
     expect(mocks.orderBy).toHaveBeenCalledWith('score', 'desc')
     expect(mocks.limit).toHaveBeenCalledWith(20)
+  })
+})
+
+describe('countScores', () => {
+  it('ボードごとのコレクションの件数を返す', async () => {
+    mocks.totalGet.mockResolvedValue({ data: () => ({ count: 42 }) })
+    await expect(countScores('extra')).resolves.toBe(42)
+    expect(mocks.collection).toHaveBeenCalledWith('scores_extra_dev')
   })
 })
 

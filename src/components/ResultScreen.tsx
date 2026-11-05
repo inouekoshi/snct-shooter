@@ -6,6 +6,7 @@ import Leaderboard from './Leaderboard'
 import ScoreSubmit from './ScoreSubmit'
 import SponsorCredit from './SponsorCredit'
 import { BTN_PRIMARY, BTN_OUTLINE } from './buttonStyles'
+import { LEADERBOARD_CLOSED } from '@/lib/leaderboard'
 
 export interface GameResult {
   kind: 'over' | 'clear'
@@ -90,6 +91,16 @@ export default function ResultScreen({ result, mode, onRetry, onHome }: Props) {
       {mode === 'EASY' ? (
         <div style={{ textAlign: 'center', marginTop: '8px' }}>
           <p style={{ fontSize: '12px', color: '#00CC88' }}>※EASYモードはランキング登録対象外です</p>
+        </div>
+      ) : LEADERBOARD_CLOSED ? (
+        <div style={{ textAlign: 'center', marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+          <p style={{ fontSize: '12px', color: '#888' }}>※ランキングの受付は終了しました</p>
+          <button
+            onClick={() => setShowLeaderboard(true)}
+            style={{ ...BTN_OUTLINE, fontSize: '14px', padding: '8px 20px' }}
+          >
+            最終ランキングを見る
+          </button>
         </div>
       ) : (
         <ScoreSubmit
