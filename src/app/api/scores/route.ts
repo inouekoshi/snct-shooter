@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTopScores, addScore, consumeSubmissionQuota } from '@/lib/firestore'
-import { SCORE_LIMITS, parseBoard, maxStageOf, isValidPlayerName } from '@/lib/leaderboard'
+import { SCORE_LIMITS, LEADERBOARD_CLOSED, parseBoard, maxStageOf, isValidPlayerName } from '@/lib/leaderboard'
 import { containsNgWord, parseNgWords } from '@/lib/ngWords'
 import { clientIpOf, rateLimitKeyOf, parseRateLimit } from '@/lib/rateLimit'
 import { isValidClientId } from '@/lib/clientId'
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (process.env.SCORES_SUBMISSION_DISABLED === '1') {
+  if (LEADERBOARD_CLOSED || process.env.SCORES_SUBMISSION_DISABLED === '1') {
     return NextResponse.json({ error: 'submission disabled' }, { status: 503 })
   }
   try {

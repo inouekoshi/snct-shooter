@@ -32,6 +32,12 @@ export async function getTopScores(n = 20, board: LeaderboardBoard = 'normal'): 
   })
 }
 
+export async function countScores(board: LeaderboardBoard = 'normal'): Promise<number> {
+  const db = initFirebase()
+  const snap = await db.collection(collectionName(board)).count().get()
+  return snap.data().count
+}
+
 export async function addScore(
   entry: LeaderboardEntry,
   board: LeaderboardBoard = 'normal'

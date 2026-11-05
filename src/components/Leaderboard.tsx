@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { fetchLeaderboard, rankEntries, type LeaderboardBoard, type LeaderboardEntry } from '@/lib/leaderboard'
+import {
+  fetchLeaderboard, rankEntries, LEADERBOARD_CLOSED, type LeaderboardBoard, type LeaderboardEntry,
+} from '@/lib/leaderboard'
 import SponsorCredit from './SponsorCredit'
 
 interface Props {
@@ -64,7 +66,9 @@ export default function Leaderboard({ highlightId, initialBoard = 'normal', onCl
           flexShrink: 0,
         }}
       >
-        <h2 style={{ fontSize: '24px', fontWeight: 'bold', letterSpacing: '2px' }}>RANKING</h2>
+        <h2 style={{ fontSize: '24px', fontWeight: 'bold', letterSpacing: '2px' }}>
+          {LEADERBOARD_CLOSED ? 'FINAL RANKING' : 'RANKING'}
+        </h2>
         <button
           onClick={onClose}
           style={{

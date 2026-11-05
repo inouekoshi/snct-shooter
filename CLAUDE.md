@@ -108,6 +108,7 @@ type GameState =
 - 投稿はクライアントID（未指定時はIP）ごとに1分20件まで（`rateLimit.ts`・`clientId.ts`）。超えたら 429（`too many requests`）
 - ステージ別スコア上限（`src/lib/leaderboard.ts` の `SCORE_LIMITS`、NORMAL / EXTRA 別）を超える投稿は 400
 - ゲームバランスを変えたら上限値も見直すこと
+- 高専祭終了につき `LEADERBOARD_CLOSED`（`leaderboard.ts`）で受付を締め切り中。POST は常に503で、トップページにはクロージング画面（`ClosingScreen.tsx`、集計は `/api/scores/summary`）を出す。ゲームは遊べる
 
 ## ゲームパラメータ早見表（実装値）
 

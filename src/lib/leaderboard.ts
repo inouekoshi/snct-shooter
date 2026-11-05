@@ -20,6 +20,8 @@ export const SCORE_LIMITS: Record<LeaderboardBoard, Record<number, number>> = {
   },
 }
 
+export const LEADERBOARD_CLOSED = true
+
 export const PLAYER_NAME_MAX_LENGTH = 10
 
 const PLAYER_NAME_PATTERN = new RegExp(`^[\\p{L}\\p{N}\\s\\-_.]{1,${PLAYER_NAME_MAX_LENGTH}}$`, 'u')
@@ -45,6 +47,15 @@ export function rankEntries(entries: LeaderboardEntry[]): number[] {
     ranks.push(sameAsPrevious ? ranks[i - 1] : i + 1)
   })
   return ranks
+}
+
+export const PODIUM_RANK = 3
+
+export function podiumEntries(entries: LeaderboardEntry[]): { rank: number; entry: LeaderboardEntry }[] {
+  const ranks = rankEntries(entries)
+  return entries
+    .map((entry, i) => ({ rank: ranks[i], entry }))
+    .filter(({ rank }) => rank <= PODIUM_RANK)
 }
 
 export const LEADERBOARD_REQUEST_TIMEOUT_MS = 8000
@@ -77,6 +88,32 @@ export async function fetchLeaderboard(board: LeaderboardBoard, submittedId?: st
   const { res, data } = await requestJson(`/api/scores?${query}`)
   if (!res.ok) throw new Error(`Failed to fetch leaderboard: ${res.status}`)
   return parseLeaderboardEntries(data)
+}
+
+export interface BoardSummary {
+  total: number
+  top: LeaderboardEntry[]
+}
+
+export type ClosingSummary = Record<LeaderboardBoard, BoardSummary>
+
+function parseBoardSummary(value: unknown): BoardSummary {
+  const total = (value as { total?: unknown } | null)?.total
+  return {
+    total: typeof total === 'number' && Number.isInteger(total) && total >= 0 ? total : 0,
+    top: parseLeaderboardEntries({ entries: (value as { top?: unknown } | null)?.top }),
+  }
+}
+
+export function parseClosingSummary(data: unknown): ClosingSummary {
+  const record = (data ?? {}) as Record<string, unknown>
+  return { normal: parseBoardSummary(record.normal), extra: parseBoardSummary(record.extra) }
+}
+
+export async function fetchClosingSummary(): Promise<ClosingSummary> {
+  const { res, data } = await requestJson('/api/scores/summary')
+  if (!res.ok) throw new Error(`Failed to fetch summary: ${res.status}`)
+  return parseClosingSummary(data)
 }
 
 export type SubmitScoreResult =
